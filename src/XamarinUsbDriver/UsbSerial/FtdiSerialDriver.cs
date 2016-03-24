@@ -130,10 +130,6 @@ namespace XamarinUsbDriver.UsbSerial
 
             private DeviceType _type;
 
-            private int _minterface = 0; /* INTERFACE_ANY */
-
-            private int _maxPacketSize = 64; // TODO(mikey): detect
-
             public FtdiSerialPort(UsbDevice device, int portNumber) : base(device, portNumber)
             {
             }
@@ -314,40 +310,24 @@ namespace XamarinUsbDriver.UsbSerial
             {
                 UsbEndpoint endpoint = Device.GetInterface(0).GetEndpoint(1);
                 int offset = 0;
-
-                while (offset < src.Length)
+                using (WriteBufferLock.Lock())
                 {
-                    int writeLength;
-                    int amtWritten;
-
-                    lock (WriteBufferLock)
+                    while (offset < src.Length)
                     {
-                        byte[] writeBuffer;
+                        var writeLength = Math.Min(src.Length - offset, WriteBuffer.Length);
 
-                        writeLength = Math.Min(src.Length - offset, WriteBuffer.Length);
-                        if (offset == 0)
-                        {
-                            writeBuffer = src;
-                        }
-                        else
-                        {
-                            // bulkTransfer does not support offsets, make a copy.
-                            Buffer.BlockCopy(src, offset, WriteBuffer, 0, writeLength);
-                            writeBuffer = WriteBuffer;
-                        }
-
-                        amtWritten = Connection.BulkTransfer(endpoint, writeBuffer, writeLength,
+                        var amtWritten = Connection.BulkTransfer(endpoint, src, offset, writeLength,
                             timeoutMillis);
-                    }
 
-                    if (amtWritten <= 0)
-                    {
-                        throw new IOException(
-                            $"Error writing {writeLength} bytes at offset {offset} length={src.Length}");
-                    }
+                        if (amtWritten <= 0)
+                        {
+                            throw new IOException(
+                                $"Error writing {writeLength} bytes at offset {offset} length={src.Length}");
+                        }
 
-                    Log.Debug(TAG, $"Wrote amtWritten={amtWritten} attempted={writeLength}");
-                    offset += amtWritten;
+                        Log.Debug(TAG, $"Wrote amtWritten={amtWritten} attempted={writeLength}");
+                        offset += amtWritten;
+                    }
                 }
                 return offset;
             }
@@ -361,21 +341,9 @@ namespace XamarinUsbDriver.UsbSerial
                 {
                     while (offset < src.Length)
                     {
-                        byte[] writeBuffer;
-
                         var writeLength = Math.Min(src.Length - offset, WriteBuffer.Length);
-                        if (offset == 0)
-                        {
-                            writeBuffer = src;
-                        }
-                        else
-                        {
-                            // bulkTransfer does not support offsets, make a copy.
-                            Buffer.BlockCopy(src, offset, WriteBuffer, 0, writeLength);
-                            writeBuffer = WriteBuffer;
-                        }
 
-                        var amtWritten = await Connection.BulkTransferAsync(endpoint, writeBuffer, writeLength,
+                        var amtWritten = await Connection.BulkTransferAsync(endpoint, src, offset, writeLength,
                             timeoutMillis);
 
                         if (amtWritten <= 0)
