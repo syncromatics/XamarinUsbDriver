@@ -19,6 +19,7 @@
 * Project home page: https://github.com/mik3y/usb-serial-for-android
 */
 
+using System.Threading.Tasks;
 using Android.Hardware.Usb;
 
 namespace XamarinUsbDriver.UsbSerial
@@ -75,114 +76,100 @@ namespace XamarinUsbDriver.UsbSerial
         /// </summary>
         string Serial { get; }
 
-        //    /**
-        //     * Opens and initializes the port. Upon success, caller must ensure that
-        //     * {@link #close()} is eventually called.
-        //     *
-        //     * @param connection an open device connection, acquired with
-        //     *            {@link UsbManager#openDevice(android.hardware.usb.UsbDevice)}
-        //     * @throws IOException on error opening or initializing the port.
-        //     */
+        /// <summary>
+        /// Opens and initializes the port. Upon success, caller must ensure that {@link #close()} is eventually called.
+        /// </summary>
+        /// <param name="connection">
+        /// an open device connection, acquired with {@link UsbManager#openDevice(android.hardware.usb.UsbDevice)}
+        /// </param>
         void Open(UsbDeviceConnection connection);
 
-        //    /**
-        //     * Closes the port.
-        //     *
-        //     * @throws IOException on error closing the port.
-        //     */
+        /// <summary>
+        /// Closes the port.
+        /// </summary>
         void Close();
 
-        //    /**
-        //     * Reads as many bytes as possible into the destination buffer.
-        //     *
-        //     * @param dest the destination byte buffer
-        //     * @param timeoutMillis the timeout for reading
-        //     * @return the actual number of bytes read
-        //     * @throws IOException if an error occurred during reading
-        //     */
+        /// <summary>
+        /// Reads as many bytes as possible into the destination buffer.
+        /// </summary>
+        /// <param name="dest">the destination byte buffer</param>
+        /// <param name="timeoutMillis">the timeout for reading</param>
+        /// <returns>the actual number of bytes read</returns>
         int Read(byte[] dest, int timeoutMillis);
 
-        //    /**
-        //     * Writes as many bytes as possible from the source buffer.
-        //     *
-        //     * @param src the source byte buffer
-        //     * @param timeoutMillis the timeout for writing
-        //     * @return the actual number of bytes written
-        //     * @throws IOException if an error occurred during writing
-        //     */
+        /// <summary>
+        /// Reads as many bytes as possible into the destination buffer.
+        /// </summary>
+        /// <param name="dest">the destination byte buffer</param>
+        /// <param name="timeoutMillis">the timeout for reading</param>
+        /// <returns>the actual number of bytes read</returns>
+        Task<int> ReadAsync(byte[] dest, int timeoutMillis);
+
+        /// <summary>
+        /// Writes as many bytes as possible from the source buffer.
+        /// </summary>
+        /// <param name="src">the source byte buffer</param>
+        /// <param name="timeoutMillis">the timeout for writing</param>
+        /// <returns>the actual number of bytes written</returns>
         int Write(byte[] src, int timeoutMillis);
 
-        //    /**
-        //     * Sets various serial port parameters.
-        //     *
-        //     * @param baudRate baud rate as an integer, for example {@code 115200}.
-        //     * @param dataBits one of {@link #DATABITS_5}, {@link #DATABITS_6},
-        //     *            {@link #DATABITS_7}, or {@link #DATABITS_8}.
-        //     * @param stopBits one of {@link #STOPBITS_1}, {@link #STOPBITS_1_5}, or
-        //     *            {@link #STOPBITS_2}.
-        //     * @param parity one of {@link #PARITY_NONE}, {@link #PARITY_ODD},
-        //     *            {@link #PARITY_EVEN}, {@link #PARITY_MARK}, or
-        //     *            {@link #PARITY_SPACE}.
-        //     * @throws IOException on error setting the port parameters
-        //     */
+        /// <summary>
+        /// Writes as many bytes as possible from the source buffer.
+        /// </summary>
+        /// <param name="src">the source byte buffer</param>
+        /// <param name="timeoutMillis">the timeout for writing</param>
+        /// <returns>the actual number of bytes written</returns>
+        Task<int> WriteAsync(byte[] src, int timeoutMillis);
+
+        /// <summary>
+        /// Sets various serial port parameters.
+        /// </summary>
+        /// <param name="baudRate">baud rate as an integer, for example {@code 115200}.</param>
+        /// <param name="dataBits">one of {@link #DATABITS_5}, {@link #DATABITS_6}, 
+        /// {@link #DATABITS_7}, or {@link #DATABITS_8}.</param>
+        /// <param name="stopBits">one of {@link #STOPBITS_1}, {@link #STOPBITS_1_5}, 
+        /// or {@link #STOPBITS_2}</param>
+        /// <param name="parity">one of {@link #PARITY_NONE}, {@link #PARITY_ODD}, 
+        /// {@link #PARITY_EVEN}, {@link #PARITY_MARK}, or {@link #PARITY_SPACE}</param>
         void SetParameters(int baudRate, DataBits dataBits, StopBits stopBits, Parity parity);
 
-        //    /**
-        //     * Gets the CD (Carrier Detect) bit from the underlying UART.
-        //     *
-        //     * @return the current state, or {@code false} if not supported.
-        //     * @throws IOException if an error occurred during reading
-        //     */
-        bool CD { get; }
+        /// <summary>
+        /// Gets the CD (Carrier Detect) bit from the underlying UART.
+        /// </summary>
+        bool Cd { get; }
 
-        //    /**
-        //     * Gets the CTS (Clear To Send) bit from the underlying UART.
-        //     *
-        //     * @return the current state, or {@code false} if not supported.
-        //     * @throws IOException if an error occurred during reading
-        //     */
-        bool CTS { get; }
+        /// <summary>
+        /// Gets the CTS (Clear To Send) bit from the underlying UART.
+        /// </summary>
+        bool Cts { get; }
 
-        //    /**
-        //     * Gets the DSR (Data Set Ready) bit from the underlying UART.
-        //     *
-        //     * @return the current state, or {@code false} if not supported.
-        //     * @throws IOException if an error occurred during reading
-        //     */
-        bool DSR { get; }
+        /// <summary>
+        /// Gets the DSR (Data Set Ready) bit from the underlying UART.
+        /// </summary>
+        bool Dsr { get; }
 
-        //    /**
-        //     * Gets and sets the DTR (Data Terminal Ready) bit from the underlying UART.
-        //     *
-        //     * @return the current state, or {@code false} if not supported.
-        //     * @throws IOException if an error occurred during reading
-        //     */
-        bool DTR { get; set; }
+        /// <summary>
+        /// Gets and sets the DTR (Data Terminal Ready) bit from the underlying UART.
+        /// </summary>
+        bool Dtr { get; set; }
 
-        //    /**
-        //     * Gets the RI (Ring Indicator) bit from the underlying UART.
-        //     *
-        //     * @return the current state, or {@code false} if not supported.
-        //     * @throws IOException if an error occurred during reading
-        //     */
-        bool RI { get; }
+        /// <summary>
+        /// Gets the RI (Ring Indicator) bit from the underlying UART.
+        /// </summary>
+        bool Ri { get; }
 
-        //    /**
-        //     * Gets and sets the RTS (Request To Send) bit from the underlying UART.
-        //     *
-        //     * @return the current state, or {@code false} if not supported.
-        //     * @throws IOException if an error occurred during reading
-        //     */
-        bool RTS { get; set; }
+        /// <summary>
+        /// Gets and sets the RTS (Request To Send) bit from the underlying UART.
+        /// </summary>
+        bool Rts { get; set; }
 
-        //    /**
-        //     * Flush non-transmitted output data and / or non-read input data
-        //     * @param flushRX {@code true} to flush non-transmitted output data
-        //     * @param flushTX {@code true} to flush non-read input data
-        //     * @return {@code true} if the operation was successful, or
-        //     * {@code false} if the operation is not supported by the driver or device
-        //     * @throws IOException if an error occurred during flush
-        //     */
-        bool PurgeHwBuffers(bool flushRX, bool flushTX);
+        /// <summary>
+        /// Flush non-transmitted output data and / or non-read input data
+        /// </summary>
+        /// <param name="flushRx">{@code true} to flush non-transmitted output data</param>
+        /// <param name="flushTx">{@code true} to flush non-read input data</param>
+        /// <returns>{@code true} if the operation was successful, or {@code false} if the 
+        /// operation is not supported by the driver or device</returns>
+        bool PurgeHwBuffers(bool flushRx, bool flushTx);
     }
 }

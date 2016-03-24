@@ -24,25 +24,19 @@ using Android.Hardware.Usb;
 
 namespace XamarinUsbDriver.UsbSerial
 {
-    /**
-     *
-     * @author mike wakerly (opensource@hoho.com)
-     */
+    /// <summary>
+    /// @author mike wakerly (opensource@hoho.com)
+    /// </summary>
     public interface IUsbSerialDriver
     {
-        /**
-         * Returns the raw {@link UsbDevice} backing this port.
-         *
-         * @return the device
-         */
+        /// <summary>
+        /// Returns the raw {@link UsbDevice} backing this port.
+        /// </summary>
         UsbDevice Device { get; }
 
-        /**
-         * Returns all available ports for this device. This list must have at least
-         * one entry.
-         *
-         * @return the ports
-         */
+        /// <summary>
+        /// Returns all available ports for this device. This list must have at least one entry.
+        /// </summary>
         List<IUsbSerialPort> Ports { get; }
     }
 }

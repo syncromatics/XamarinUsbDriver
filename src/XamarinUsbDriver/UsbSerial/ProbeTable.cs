@@ -25,40 +25,26 @@ using Android.Hardware.Usb;
 
 namespace XamarinUsbDriver.UsbSerial
 {
-    /**
- * Maps (vendor id, product id) pairs to the corresponding serial driver.
- *
- * @author mike wakerly (opensource@hoho.com)
- */
-
+    /// <summary>
+    /// Maps (vendor id, product id) pairs to the corresponding serial driver.
+    /// </summary>
     public class ProbeTable
     {
-
         private readonly Dictionary<Tuple<int, int>, Func<UsbDevice, IUsbSerialDriver>> _probeTable =
             new Dictionary<Tuple<int, int>, Func<UsbDevice, IUsbSerialDriver>>();
 
-        /**
-         * Adds or updates a (vendor, product) pair in the table.
-         *
-         * @param vendorId the USB vendor id
-         * @param productId the USB product id
-         * @param driverClass the driver class responsible for this pair
-         * @return {@code this}, for chaining
-         */
-
+        /// <summary>
+        /// Adds or updates a (vendor, product) pair in the table.
+        /// </summary>
+        /// <param name="vendorId">the USB vendor id</param>
+        /// <param name="productId">the USB product id</param>
+        /// <param name="driverFunc">the function for creating the driver</param>
+        /// <returns>{@code this}, for chaining</returns>
         public ProbeTable AddProduct(int vendorId, int productId, Func<UsbDevice, IUsbSerialDriver> driverFunc)
         {
             _probeTable.Add(Tuple.Create(vendorId, productId), driverFunc);
             return this;
         }
-
-        /**
-     * Internal method to add all supported products from
-     * {@code getSupportedProducts} static method.
-     *
-     * @param driverClass
-     * @return
-     */
 
         public ProbeTable AddDriver(Dictionary<int, int[]> productPairs, Func<UsbDevice, IUsbSerialDriver> driverFunc)
         {
@@ -74,15 +60,12 @@ namespace XamarinUsbDriver.UsbSerial
             return this;
         }
 
-        /**
-         * Returns the driver for the given (vendor, product) pair, or {@code null}
-         * if no match.
-         *
-         * @param vendorId the USB vendor id
-         * @param productId the USB product id
-         * @return the driver class matching this pair, or {@code null}
-         */
-
+        /// <summary>
+        /// Returns the driver for the given (vendor, product) pair, or {@code null} if no match.
+        /// </summary>
+        /// <param name="vendorId">the USB vendor id</param>
+        /// <param name="productId">the USB product id</param>
+        /// <returns>the driver creation function matching this pair, or {@code null}</returns>
         public Func<UsbDevice, IUsbSerialDriver> FindDriver(int vendorId, int productId)
         {
             Tuple<int, int> pair = Tuple.Create(vendorId, productId);

@@ -19,105 +19,90 @@
  * Project home page: https://github.com/mik3y/usb-serial-for-android
  */
 
+using System.Threading.Tasks;
 using Android.Hardware.Usb;
 
 namespace XamarinUsbDriver.UsbSerial
 {
-    /**
- * A base class shared by several driver implementations.
- *
- * @author mike wakerly (opensource@hoho.com)
- */
-
+    /// <summary>
+    /// A base class shared by several driver implementations.
+    /// </summary>
     public abstract class CommonUsbSerialPort : IUsbSerialPort
     {
-        public static int DEFAULT_READ_BUFFER_SIZE = 16*1024;
-        public static int DEFAULT_WRITE_BUFFER_SIZE = 16*1024;
+        public static int DefaultReadBufferSize = 16*1024;
+        public static int DefaultWriteBufferSize = 16*1024;
 
-        protected UsbDevice mDevice;
-        protected int mPortNumber;
+        /// <summary>
+        /// Returns the currently-bound USB device.
+        /// </summary>
+        public UsbDevice Device { get; }
 
-        // non-null when open()
-        protected UsbDeviceConnection mConnection = null;
+        public IUsbSerialDriver Driver { get; }
 
-        protected object mReadBufferLock = new object();
-        protected object mWriteBufferLock = new object();
+        public int PortNumber { get; }
+
+        protected UsbDeviceConnection Connection = null;
+
+        protected object ReadBufferLock = new object();
+        protected AsyncLock WriteBufferLock = new AsyncLock();
 
         /** Internal read buffer.  Guarded by {@link #mReadBufferLock}. */
-        protected byte[] mReadBuffer;
+        protected byte[] ReadBuffer;
 
         /** Internal write buffer.  Guarded by {@link #mWriteBufferLock}. */
-        protected byte[] mWriteBuffer;
+        protected byte[] WriteBuffer;
 
-        public CommonUsbSerialPort(UsbDevice device, int portNumber)
+        protected CommonUsbSerialPort(UsbDevice device, int portNumber)
         {
-            mDevice = device;
-            mPortNumber = portNumber;
+            Device = device;
+            PortNumber = portNumber;
 
-            mReadBuffer = new byte[DEFAULT_READ_BUFFER_SIZE];
-            mWriteBuffer = new byte[DEFAULT_WRITE_BUFFER_SIZE];
+            ReadBuffer = new byte[DefaultReadBufferSize];
+            WriteBuffer = new byte[DefaultWriteBufferSize];
         }
 
         public override string ToString()
         {
-            return "";
-            //return String.format("<%s device_name=%s device_id=%s port_number=%s>",
-            //        getClass().getSimpleName(), mDevice.getDeviceName(),
-            //        mDevice.getDeviceId(), mPortNumber);
+            return $"<{nameof(CommonUsbSerialPort)} device_name={Device.DeviceName} " +
+                   $"device_id={Device.DeviceId} port_number={PortNumber}>";
         }
 
-        /**
-     * Returns the currently-bound USB device.
-     *
-     * @return the device
-     */
-        public UsbDevice Device { get; }
+        /// <summary>
+        /// Returns the device serial number
+        /// </summary>
+        public string Serial => Connection.Serial;
 
-        public int PortNumber { get; }
-
-        public IUsbSerialDriver Driver { get; }
-
-        /**
-     * Returns the device serial number
-     *  @return serial number
-     */
-        public string Serial => mConnection.Serial;
-
-        /**
-     * Sets the size of the internal buffer used to exchange data with the USB
-     * stack for read operations.  Most users should not need to change this.
-     *
-     * @param bufferSize the size in bytes
-     */
-
+        /// <summary>
+        /// Sets the size of the internal buffer used to exchange data with the USB 
+        /// stack for read operations. Most users should not need to change this.
+        /// </summary>
+        /// <param name="bufferSize">the size in bytes</param>
         public void SetReadBufferSize(int bufferSize)
         {
-            lock (mReadBufferLock)
+            lock (ReadBufferLock)
             {
-                if (bufferSize == mReadBuffer.Length)
+                if (bufferSize == ReadBuffer.Length)
                 {
                     return;
                 }
-                mReadBuffer = new byte[bufferSize];
+                ReadBuffer = new byte[bufferSize];
             }
         }
 
-        /**
-     * Sets the size of the internal buffer used to exchange data with the USB
-     * stack for write operations.  Most users should not need to change this.
-     *
-     * @param bufferSize the size in bytes
-     */
-
+       /// <summary>
+       /// Sets the size of the internal buffer used to exchange data with the USB 
+       /// stack for write operations. Most users should not need to change this.
+       /// </summary>
+       /// <param name="bufferSize">the size in bytes</param>
         public void SetWriteBufferSize(int bufferSize)
         {
-            lock (mWriteBufferLock)
+            using (WriteBufferLock.Lock())
             {
-                if (bufferSize == mWriteBuffer.Length)
+                if (bufferSize == WriteBuffer.Length)
                 {
                     return;
                 }
-                mWriteBuffer = new byte[bufferSize];
+                WriteBuffer = new byte[bufferSize];
             }
         }
 
@@ -127,25 +112,29 @@ namespace XamarinUsbDriver.UsbSerial
 
         public abstract int Read(byte[] dest, int timeoutMillis);
 
+        public abstract Task<int> ReadAsync(byte[] dest, int timeoutMillis);
+
         public abstract int Write(byte[] src, int timeoutMillis);
+
+        public abstract Task<int> WriteAsync(byte[] src, int timeoutMillis);
 
         public abstract void SetParameters(int baudRate, DataBits dataBits, StopBits stopBits, Parity parity);
 
-        public abstract bool CD { get; }
+        public abstract bool Cd { get; }
 
-        public abstract bool CTS { get; }
+        public abstract bool Cts { get; }
 
-        public abstract bool DSR { get; }
+        public abstract bool Dsr { get; }
 
-        public abstract bool DTR { get; set; }
+        public abstract bool Dtr { get; set; }
 
-        public abstract bool RI { get; }
+        public abstract bool Ri { get; }
 
-        public abstract bool RTS { get; set; }
+        public abstract bool Rts { get; set; }
 
-        public bool PurgeHwBuffers(bool flushReadBuffers, bool flushWriteBuffers)
+        public bool PurgeHwBuffers(bool flushRx, bool flushTx)
         {
-            return !flushReadBuffers && !flushWriteBuffers;
+            return !flushRx && !flushTx;
         }
     }
 }

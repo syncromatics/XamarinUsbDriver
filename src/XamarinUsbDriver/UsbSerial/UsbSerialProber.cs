@@ -25,14 +25,8 @@ using Android.Hardware.Usb;
 
 namespace XamarinUsbDriver.UsbSerial
 {
-    /**
- *
- * @author mike wakerly (opensource@hoho.com)
- */
-
     public class UsbSerialProber
     {
-
         private readonly ProbeTable _probeTable;
 
         public UsbSerialProber(ProbeTable probeTable)
@@ -50,22 +44,20 @@ namespace XamarinUsbDriver.UsbSerial
             ProbeTable probeTable = new ProbeTable();
             //    probeTable.addDriver(CdcAcmSerialDriver.class);
             //probeTable.addDriver(Cp21xxSerialDriver.class);
-            probeTable.AddDriver(FtdiSerialDriver.getSupportedDevices(), device => new FtdiSerialDriver(device));
+            probeTable.AddDriver(FtdiSerialDriver.GetSupportedDevices(), device => new FtdiSerialDriver(device));
             //probeTable.addDriver(ProlificSerialDriver.class);
             //probeTable.addDriver(Ch34xSerialDriver.class);
             return probeTable;
         }
 
-        /**
-     * Finds and builds all possible {@link UsbSerialDriver UsbSerialDrivers}
-     * from the currently-attached {@link UsbDevice} hierarchy. This method does
-     * not require permission from the Android USB system, since it does not
-     * open any of the devices.
-     *
-     * @param usbManager
-     * @return a list, possibly empty, of all compatible drivers
-     */
-
+        /// <summary>
+        /// Finds and builds all possible {@link UsbSerialDriver UsbSerialDrivers}
+        /// from the currently-attached {@link UsbDevice} hierarchy. This method does
+        /// not require permission from the Android USB system, since it does not
+        /// open any of the devices.
+        /// </summary>
+        /// <param name="usbManager"></param>
+        /// <returns>a list, possibly empty, of all compatible drivers</returns>
         public List<IUsbSerialDriver> FindAllDrivers(UsbManager usbManager)
         {
             return usbManager.DeviceList.Values
@@ -74,14 +66,11 @@ namespace XamarinUsbDriver.UsbSerial
                 .ToList();
         }
 
-        /**
-     * Probes a single device for a compatible driver.
-     * 
-     * @param usbDevice the usb device to probe
-     * @return a new {@link UsbSerialDriver} compatible with this device, or
-     *         {@code null} if none available.
-     */
-
+        /// <summary>
+        /// Probes a single device for a compatible driver.
+        /// </summary>
+        /// <param name="usbDevice">the usb device to probe</param>
+        /// <returns>a new {@link UsbSerialDriver} compatible with this device, or </returns> {@code null} if none available.
         public IUsbSerialDriver ProbeDevice(UsbDevice usbDevice)
         {
             int vendorId = usbDevice.VendorId;

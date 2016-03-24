@@ -17,11 +17,23 @@
  * USA.
  *
  * Project home page: https://github.com/mik3y/usb-serial-for-android
+ *
+ * This driver is based on http://www.intra2net.com/en/developer/libftdi, and is
+ * copyright and subject to the following terms:
+ *
+ *   Copyright (C) 2003 by Intra2net AG
+ *
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU Lesser General Public License
+ *   version 2.1 as published by the Free Software Foundation;
+ *
+ *   opensource@intra2net.com
  */
 
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 using Android.Hardware.Usb;
 using Android.Util;
 using Java.Lang;
@@ -31,72 +43,11 @@ using Math = System.Math;
 
 namespace XamarinUsbDriver.UsbSerial
 {
-    /**
- * A {@link CommonUsbSerialPort} implementation for a variety of FTDI devices
- * <p>
- * This driver is based on <a
- * href="http://www.intra2net.com/en/developer/libftdi">libftdi</a>, and is
- * copyright and subject to the following terms:
- *
- * <pre>
- *   Copyright (C) 2003 by Intra2net AG
- *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU Lesser General Public License
- *   version 2.1 as published by the Free Software Foundation;
- *
- *   opensource@intra2net.com
- *   http://www.intra2net.com/en/developer/libftdi
- * </pre>
- *
- * </p>
- * <p>
- * Some FTDI devices have not been tested; see later listing of supported and
- * unsupported devices. Devices listed as "supported" support the following
- * features:
- * <ul>
- * <li>Read and write of serial data (see
- * {@link CommonUsbSerialPort#read(byte[], int)} and
- * {@link CommonUsbSerialPort#write(byte[], int)}.</li>
- * <li>Setting serial line parameters (see
- * {@link CommonUsbSerialPort#setParameters(int, int, int, int)}.</li>
- * </ul>
- * </p>
- * <p>
- * Supported and tested devices:
- * <ul>
- * <li>{@value DeviceType#TYPE_R}</li>
- * </ul>
- * </p>
- * <p>
- * Unsupported but possibly working devices (please contact the author with
- * feedback or patches):
- * <ul>
- * <li>{@value DeviceType#TYPE_2232C}</li>
- * <li>{@value DeviceType#TYPE_2232H}</li>
- * <li>{@value DeviceType#TYPE_4232H}</li>
- * <li>{@value DeviceType#TYPE_AM}</li>
- * <li>{@value DeviceType#TYPE_BM}</li>
- * </ul>
- * </p>
- *
- * @author mike wakerly (opensource@hoho.com)
- * @see <a href="https://github.com/mik3y/usb-serial-for-android">USB Serial
- *      for Android project page</a>
- * @see <a href="http://www.ftdichip.com/">FTDI Homepage</a>
- * @see <a href="http://www.intra2net.com/en/developer/libftdi">libftdi</a>
- */
-
-
+    /// <summary>
+    /// 
+    /// </summary>
     public class FtdiSerialDriver : IUsbSerialDriver
     {
-
-        //    private final UsbDevice mDevice;
-        //    private final UsbSerialPort mPort;
-
-        //    /**
-        //     * FTDI chip types.
-        //     */
         private enum DeviceType
         {
             TYPE_BM,
@@ -109,14 +60,14 @@ namespace XamarinUsbDriver.UsbSerial
 
         public UsbDevice Device { get; }
 
-        public List<IUsbSerialPort> Ports => new List<IUsbSerialPort> {port};
+        public List<IUsbSerialPort> Ports => new List<IUsbSerialPort> {_port};
 
-        private IUsbSerialPort port;
+        private readonly IUsbSerialPort _port;
 
         public FtdiSerialDriver(UsbDevice device)
         {
             Device = device;
-            port = new FtdiSerialPort(Device, 0);
+            _port = new FtdiSerialPort(Device, 0);
         }
 
         private class FtdiSerialPort : CommonUsbSerialPort
@@ -142,12 +93,12 @@ namespace XamarinUsbDriver.UsbSerial
             //    /**
             //     * Reset the port.
             //     */
-            private static int SIO_RESET_REQUEST = 0;
+            private static int _sioResetRequest = 0;
 
             //    /**
             //     * Set the modem control register.
             //     */
-            private static int SIO_MODEM_CTRL_REQUEST = 1;
+            private static int _sioModemCtrlRequest = 1;
 
             //    /**
             //     * Set flow control register.
@@ -157,44 +108,63 @@ namespace XamarinUsbDriver.UsbSerial
             //    /**
             //     * Set baud rate.
             //     */
-            private static int SIO_SET_BAUD_RATE_REQUEST = 3;
+            private const int SioSetBaudRateRequest = 3;
 
             //    /**
             //     * Set the data characteristics of the port.
             //     */
-            private static int SIO_SET_DATA_REQUEST = 4;
+            private const int SioSetDataRequest = 4;
 
-            private static int SIO_RESET_SIO = 0;
-            private static int SIO_RESET_PURGE_RX = 1;
-            private static int SIO_RESET_PURGE_TX = 2;
+            private const int SioResetSio = 0;
+            private const int SioResetPurgeRx = 1;
+            private const int SioResetPurgeTx = 2;
 
-            public static UsbAddressing FTDI_DEVICE_OUT_REQTYPE =
+            public static readonly UsbAddressing FtdiDeviceOutReqtype =
                 (UsbAddressing) (UsbConstants.UsbTypeVendor | USB_RECIP_DEVICE | USB_ENDPOINT_OUT);
 
             public static int FTDI_DEVICE_IN_REQTYPE = UsbConstants.UsbTypeVendor | USB_RECIP_DEVICE | USB_ENDPOINT_IN;
 
-            //    /**
-            //     * Length of the modem status header, transmitted with every read.
-            //     */
-            private static int MODEM_STATUS_HEADER_LENGTH = 2;
+            private const int ModemStatusHeaderLength = 2;
 
             private string TAG = typeof (FtdiSerialDriver).Name;
 
-            private DeviceType mType;
+            private DeviceType _type;
 
-            private int mInterface = 0; /* INTERFACE_ANY */
+            private int _minterface = 0; /* INTERFACE_ANY */
 
-            private int mMaxPacketSize = 64; // TODO(mikey): detect
-
-            //    /**
-            //     * Due to http://b.android.com/28023 , we cannot use UsbRequest async reads
-            //     * since it gives no indication of number of bytes read. Set this to
-            //     * {@code true} on platforms where it is fixed.
-            //     */
-            //private static bool ENABLE_ASYNC_READS = false;
+            private int _maxPacketSize = 64; // TODO(mikey): detect
 
             public FtdiSerialPort(UsbDevice device, int portNumber) : base(device, portNumber)
             {
+            }
+
+            /// <summary>
+            /// Filter FTDI status bytes from buffer
+            /// </summary>
+            /// <param name="src">The source buffer (which contains status bytes)</param>
+            /// <param name="dest">The destination buffer to write the status bytes into (can be src)</param>
+            /// <param name="totalBytesRead">Number of bytes read to src</param>
+            /// <param name="maxPacketSize">The USB endpoint max packet size</param>
+            /// <returns>The number of payload bytes</returns>
+            private int filterStatusBytes(byte[] src, byte[] dest, int totalBytesRead, int maxPacketSize)
+            {
+                int packetsCount = totalBytesRead/maxPacketSize + (totalBytesRead%maxPacketSize == 0 ? 0 : 1);
+                for (int packetIdx = 0; packetIdx < packetsCount; ++packetIdx)
+                {
+                    int count = (packetIdx == (packetsCount - 1))
+                        ? (totalBytesRead%maxPacketSize) - ModemStatusHeaderLength
+                        : maxPacketSize - ModemStatusHeaderLength;
+                    if (count > 0)
+                    {
+                        Buffer.BlockCopy(src,
+                            packetIdx*maxPacketSize + ModemStatusHeaderLength,
+                            dest,
+                            packetIdx*(maxPacketSize - ModemStatusHeaderLength),
+                            count);
+                    }
+                }
+
+                return totalBytesRead - (packetsCount*2);
             }
 
             //    /**
@@ -205,55 +175,34 @@ namespace XamarinUsbDriver.UsbSerial
             //     * @param maxPacketSize The USB endpoint max packet size
             //     * @return The number of payload bytes
             //     */
-            private int filterStatusBytes(byte[] src, byte[] dest, int totalBytesRead, int maxPacketSize)
-            {
-                int packetsCount = totalBytesRead/maxPacketSize + (totalBytesRead%maxPacketSize == 0 ? 0 : 1);
-                for (int packetIdx = 0; packetIdx < packetsCount; ++packetIdx)
-                {
-                    int count = (packetIdx == (packetsCount - 1))
-                        ? (totalBytesRead%maxPacketSize) - MODEM_STATUS_HEADER_LENGTH
-                        : maxPacketSize - MODEM_STATUS_HEADER_LENGTH;
-                    if (count > 0)
-                    {
-                        Buffer.BlockCopy(src,
-                            packetIdx*maxPacketSize + MODEM_STATUS_HEADER_LENGTH,
-                            dest,
-                            packetIdx*(maxPacketSize - MODEM_STATUS_HEADER_LENGTH),
-                            count);
-                    }
-                }
 
-                return totalBytesRead - (packetsCount*2);
-            }
-
-            public void reset()
+            public void Reset()
             {
-                int result = mConnection.ControlTransfer(FTDI_DEVICE_OUT_REQTYPE, SIO_RESET_REQUEST,
-                    SIO_RESET_SIO, 0 /* index */, null, 0, USB_WRITE_TIMEOUT_MILLIS);
+                int result = Connection.ControlTransfer(FtdiDeviceOutReqtype, _sioResetRequest,
+                    SioResetSio, 0 /* index */, null, 0, USB_WRITE_TIMEOUT_MILLIS);
                 if (result != 0)
                 {
                     throw new IOException("Reset failed: result=" + result);
                 }
 
                 // TODO(mikey): autodetect.
-                mType = DeviceType.TYPE_R;
+                _type = DeviceType.TYPE_R;
             }
 
-            //    @Override
             public override void Open(UsbDeviceConnection connection)
             {
-                if (mConnection != null)
+                if (Connection != null)
                 {
                     throw new IOException("Already open");
                 }
-                mConnection = connection;
+                Connection = connection;
 
                 bool opened = false;
                 try
                 {
-                    for (int i = 0; i < mDevice.InterfaceCount; i++)
+                    for (int i = 0; i < Device.InterfaceCount; i++)
                     {
-                        if (connection.ClaimInterface(mDevice.GetInterface(i), true))
+                        if (connection.ClaimInterface(Device.GetInterface(i), true))
                         {
                             Log.Debug(TAG, "claimInterface " + i + " SUCCESS");
                         }
@@ -262,7 +211,7 @@ namespace XamarinUsbDriver.UsbSerial
                             throw new IOException("Error claiming interface " + i);
                         }
                     }
-                    reset();
+                    Reset();
                     opened = true;
                 }
                 finally
@@ -270,88 +219,100 @@ namespace XamarinUsbDriver.UsbSerial
                     if (!opened)
                     {
                         Close();
-                        mConnection = null;
+                        Connection = null;
                     }
                 }
             }
 
-            //    @Override
             public override void Close()
             {
-                if (mConnection == null)
+                if (Connection == null)
                 {
                     throw new IOException("Already closed");
                 }
                 try
                 {
-                    mConnection.Close();
+                    Connection.Close();
                 }
                 finally
                 {
-                    mConnection = null;
+                    Connection = null;
                 }
             }
 
             public override int Read(byte[] dest, int timeoutMillis)
             {
-                UsbEndpoint endpoint = mDevice.GetInterface(0).GetEndpoint(0);
+                UsbEndpoint endpoint = Device.GetInterface(0).GetEndpoint(0);
 
-                if (true)
+                int readAmt;
+                lock (ReadBufferLock)
                 {
-                    int readAmt;
-                    lock (mReadBufferLock)
-                    {
-                        // mReadBuffer is only used for maximum read size.
-                        readAmt = Math.Min(dest.Length, mReadBuffer.Length);
-                    }
-
-                    UsbRequest request = new UsbRequest();
-                    request.Initialize(mConnection, endpoint);
-
-                    ByteBuffer buf = ByteBuffer.Wrap(dest);
-                    if (!request.Queue(buf, readAmt))
-                    {
-                        throw new IOException("Error queueing request.");
-                    }
-
-                    UsbRequest response = mConnection.RequestWait();
-                    if (response == null)
-                    {
-                        throw new IOException("Null response");
-                    }
-
-                    int payloadBytesRead = buf.Position() - MODEM_STATUS_HEADER_LENGTH;
-                    if (payloadBytesRead > 0)
-                    {
-                        Log.Debug(TAG, BitConverter.ToString(dest, 0, Math.Min(32, dest.Length)));
-                        return payloadBytesRead;
-                    }
-                    else
-                    {
-                        return 0;
-                    }
+                    // mReadBuffer is only used for maximum read size.
+                    readAmt = Math.Min(dest.Length, ReadBuffer.Length);
                 }
-                //else {
-                //    int totalBytesRead;
 
-                //    lock(mReadBufferLock) {
-                //        final int readAmt = Math.min(dest.length, mReadBuffer.length);
-                //        totalBytesRead = mConnection.bulkTransfer(endpoint, mReadBuffer,
-                //                readAmt, timeoutMillis);
+                UsbRequest request = new UsbRequest();
+                request.Initialize(Connection, endpoint);
 
-                //        if (totalBytesRead < MODEM_STATUS_HEADER_LENGTH)
-                //        {
-                //            throw new IOException("Expected at least " + MODEM_STATUS_HEADER_LENGTH + " bytes");
-                //        }
+                ByteBuffer buf = ByteBuffer.Wrap(dest);
+                if (!request.Queue(buf, readAmt))
+                {
+                    throw new IOException("Error queueing request.");
+                }
 
-                //        return filterStatusBytes(mReadBuffer, dest, totalBytesRead, endpoint.getMaxPacketSize());
-                //    }
-                //}
+                UsbRequest response = Connection.RequestWait();
+                if (response == null)
+                {
+                    throw new IOException("Null response");
+                }
+
+                int payloadBytesRead = buf.Position() - ModemStatusHeaderLength;
+                if (payloadBytesRead <= 0)
+                    return 0;
+
+                Log.Debug(TAG, BitConverter.ToString(dest, 0, Math.Min(32, dest.Length)));
+
+                return filterStatusBytes(dest, dest, buf.Position(), endpoint.MaxPacketSize);
+            }
+
+            public override async Task<int> ReadAsync(byte[] dest, int timeoutMillis)
+            {
+                UsbEndpoint endpoint = Device.GetInterface(0).GetEndpoint(0);
+
+                int readAmt;
+                lock (ReadBufferLock)
+                {
+                    // mReadBuffer is only used for maximum read size.
+                    readAmt = Math.Min(dest.Length, ReadBuffer.Length);
+                }
+
+                UsbRequest request = new UsbRequest();
+                request.Initialize(Connection, endpoint);
+
+                ByteBuffer buf = ByteBuffer.Wrap(dest);
+                if (!request.Queue(buf, readAmt))
+                {
+                    throw new IOException("Error queueing request.");
+                }
+
+                UsbRequest response = await Connection.RequestWaitAsync();
+                if (response == null)
+                {
+                    throw new IOException("Null response");
+                }
+
+                int payloadBytesRead = buf.Position() - ModemStatusHeaderLength;
+                if (payloadBytesRead <= 0)
+                    return 0;
+
+                Log.Debug(TAG, BitConverter.ToString(dest, 0, Math.Min(32, dest.Length)));
+
+                return filterStatusBytes(dest, dest, buf.Position(), endpoint.MaxPacketSize);
             }
 
             public override int Write(byte[] src, int timeoutMillis)
             {
-                UsbEndpoint endpoint = mDevice.GetInterface(0).GetEndpoint(1);
+                UsbEndpoint endpoint = Device.GetInterface(0).GetEndpoint(1);
                 int offset = 0;
 
                 while (offset < src.Length)
@@ -359,11 +320,11 @@ namespace XamarinUsbDriver.UsbSerial
                     int writeLength;
                     int amtWritten;
 
-                    lock (mWriteBufferLock)
+                    lock (WriteBufferLock)
                     {
                         byte[] writeBuffer;
 
-                        writeLength = Math.Min(src.Length - offset, mWriteBuffer.Length);
+                        writeLength = Math.Min(src.Length - offset, WriteBuffer.Length);
                         if (offset == 0)
                         {
                             writeBuffer = src;
@@ -371,45 +332,87 @@ namespace XamarinUsbDriver.UsbSerial
                         else
                         {
                             // bulkTransfer does not support offsets, make a copy.
-                            Buffer.BlockCopy(src, offset, mWriteBuffer, 0, writeLength);
-                            writeBuffer = mWriteBuffer;
+                            Buffer.BlockCopy(src, offset, WriteBuffer, 0, writeLength);
+                            writeBuffer = WriteBuffer;
                         }
 
-                        amtWritten = mConnection.BulkTransfer(endpoint, writeBuffer, writeLength,
+                        amtWritten = Connection.BulkTransfer(endpoint, writeBuffer, writeLength,
                             timeoutMillis);
                     }
 
                     if (amtWritten <= 0)
                     {
-                        throw new IOException("Error writing " + writeLength
-                                              + " bytes at offset " + offset + " length=" + src.Length);
+                        throw new IOException(
+                            $"Error writing {writeLength} bytes at offset {offset} length={src.Length}");
                     }
 
-                    Log.Debug(TAG, "Wrote amtWritten=" + amtWritten + " attempted=" + writeLength);
+                    Log.Debug(TAG, $"Wrote amtWritten={amtWritten} attempted={writeLength}");
                     offset += amtWritten;
                 }
                 return offset;
             }
 
-            private int setBaudRate(int baudRate)
+            public override async Task<int> WriteAsync(byte[] src, int timeoutMillis)
             {
-                long[] vals = convertBaudrate(baudRate);
+                UsbEndpoint endpoint = Device.GetInterface(0).GetEndpoint(1);
+                int offset = 0;
+
+                using (await WriteBufferLock.LockAsync())
+                {
+                    while (offset < src.Length)
+                    {
+                        byte[] writeBuffer;
+
+                        var writeLength = Math.Min(src.Length - offset, WriteBuffer.Length);
+                        if (offset == 0)
+                        {
+                            writeBuffer = src;
+                        }
+                        else
+                        {
+                            // bulkTransfer does not support offsets, make a copy.
+                            Buffer.BlockCopy(src, offset, WriteBuffer, 0, writeLength);
+                            writeBuffer = WriteBuffer;
+                        }
+
+                        var amtWritten = await Connection.BulkTransferAsync(endpoint, writeBuffer, writeLength,
+                            timeoutMillis);
+
+                        if (amtWritten <= 0)
+                        {
+                            throw new IOException(
+                                $"Error writing {writeLength} bytes at offset {offset} length={src.Length}");
+                        }
+
+                        Log.Debug(TAG, $"Wrote amtWritten={amtWritten} attempted={writeLength}");
+                        offset += amtWritten;
+                    }
+
+                }
+                return offset;
+            }
+
+            private int SetBaudRate(int baudRate)
+            {
+                long[] vals = ConvertBaudrate(baudRate);
                 long actualBaudrate = vals[0];
                 long index = vals[1];
                 long value = vals[2];
-                int result = mConnection.ControlTransfer(FTDI_DEVICE_OUT_REQTYPE,
-                    SIO_SET_BAUD_RATE_REQUEST, (int) value, (int) index,
+
+                int result = Connection.ControlTransfer(FtdiDeviceOutReqtype,
+                    SioSetBaudRateRequest, (int) value, (int) index,
                     null, 0, USB_WRITE_TIMEOUT_MILLIS);
+
                 if (result != 0)
                 {
-                    throw new IOException("Setting baudrate failed: result=" + result);
+                    throw new IOException($"Setting baudrate failed: result={result}");
                 }
                 return (int) actualBaudrate;
             }
 
             public override void SetParameters(int baudRate, DataBits dataBits, StopBits stopBits, Parity parity)
             {
-                setBaudRate(baudRate);
+                SetBaudRate(baudRate);
 
                 int config = (int) dataBits;
 
@@ -449,16 +452,17 @@ namespace XamarinUsbDriver.UsbSerial
                         throw new IllegalArgumentException("Unknown stopBits value: " + stopBits);
                 }
 
-                int result = mConnection.ControlTransfer(FTDI_DEVICE_OUT_REQTYPE,
-                    SIO_SET_DATA_REQUEST, config, 0 /* index */,
+                int result = Connection.ControlTransfer(FtdiDeviceOutReqtype,
+                    SioSetDataRequest, config, 0 /* index */,
                     null, 0, USB_WRITE_TIMEOUT_MILLIS);
+
                 if (result != 0)
                 {
                     throw new IOException("Setting parameters failed: result=" + result);
                 }
             }
 
-            private long[] convertBaudrate(int baudrate)
+            private long[] ConvertBaudrate(int baudrate)
             {
                 // TODO(mikey): Braindead transcription of libfti method.  Clean up,
                 // using more idiomatic Java where possible.
@@ -471,7 +475,6 @@ namespace XamarinUsbDriver.UsbSerial
                 for (int i = 0; i < 2; i++)
                 {
                     int tryDivisor = divisor + i;
-                    int baudEstimate;
                     int baudDiff;
 
                     if (tryDivisor <= 8)
@@ -479,7 +482,7 @@ namespace XamarinUsbDriver.UsbSerial
                         // Round up to minimum supported divisor
                         tryDivisor = 8;
                     }
-                    else if (mType != DeviceType.TYPE_AM && tryDivisor < 12)
+                    else if (_type != DeviceType.TYPE_AM && tryDivisor < 12)
                     {
                         // BM doesn't support divisors 9 through 11 inclusive
                         tryDivisor = 12;
@@ -491,7 +494,7 @@ namespace XamarinUsbDriver.UsbSerial
                     }
                     else
                     {
-                        if (mType == DeviceType.TYPE_AM)
+                        if (_type == DeviceType.TYPE_AM)
                         {
                             // TODO
                         }
@@ -507,7 +510,7 @@ namespace XamarinUsbDriver.UsbSerial
                     }
 
                     // Get estimated baud rate (to nearest integer)
-                    baudEstimate = (24000000 + (tryDivisor/2))/tryDivisor;
+                    var baudEstimate = (24000000 + (tryDivisor/2))/tryDivisor;
 
                     // Get absolute difference from requested baud rate
                     if (baudEstimate < baudrate)
@@ -548,8 +551,8 @@ namespace XamarinUsbDriver.UsbSerial
                 // Split into "value" and "index" values
                 long value = encodedDivisor & 0xFFFF;
                 long index;
-                if (mType == DeviceType.TYPE_2232C || mType == DeviceType.TYPE_2232H
-                    || mType == DeviceType.TYPE_4232H)
+                if (_type == DeviceType.TYPE_2232C || _type == DeviceType.TYPE_2232H
+                    || _type == DeviceType.TYPE_4232H)
                 {
                     index = (encodedDivisor >> 8) & 0xffff;
                     index &= 0xFF00;
@@ -564,33 +567,33 @@ namespace XamarinUsbDriver.UsbSerial
                 return new[] {bestBaud, index, value};
             }
 
-            public override bool CD => false;
+            public override bool Cd => false;
 
-            public override bool CTS => false;
+            public override bool Cts => false;
 
-            public override bool DSR => false;
+            public override bool Dsr => false;
 
-            public override bool DTR
+            public override bool Dtr
             {
                 get { return false; }
                 set { }
             }
 
-            public override bool RI => false;
+            public override bool Ri => false;
 
-            public override bool RTS
+            public override bool Rts
             {
                 get { return false; }
                 set { }
             }
 
-            //    @Override
-            public bool PurgeHwBuffers(bool purgeReadBuffers, bool purgeWriteBuffers)
+            public new bool PurgeHwBuffers(bool purgeReadBuffers, bool purgeWriteBuffers)
             {
                 if (purgeReadBuffers)
                 {
-                    int result = mConnection.ControlTransfer(FTDI_DEVICE_OUT_REQTYPE, SIO_RESET_REQUEST,
-                        SIO_RESET_PURGE_RX, 0 /* index */, null, 0, USB_WRITE_TIMEOUT_MILLIS);
+                    int result = Connection.ControlTransfer(FtdiDeviceOutReqtype, _sioResetRequest,
+                        SioResetPurgeRx, 0 /* index */, null, 0, USB_WRITE_TIMEOUT_MILLIS);
+
                     if (result != 0)
                     {
                         throw new IOException("Flushing RX failed: result=" + result);
@@ -599,8 +602,9 @@ namespace XamarinUsbDriver.UsbSerial
 
                 if (purgeWriteBuffers)
                 {
-                    int result = mConnection.ControlTransfer(FTDI_DEVICE_OUT_REQTYPE, SIO_RESET_REQUEST,
-                        SIO_RESET_PURGE_TX, 0 /* index */, null, 0, USB_WRITE_TIMEOUT_MILLIS);
+                    int result = Connection.ControlTransfer(FtdiDeviceOutReqtype, _sioResetRequest,
+                        SioResetPurgeTx, 0 /* index */, null, 0, USB_WRITE_TIMEOUT_MILLIS);
+
                     if (result != 0)
                     {
                         throw new IOException("Flushing RX failed: result=" + result);
@@ -610,16 +614,18 @@ namespace XamarinUsbDriver.UsbSerial
             }
         }
 
-        public static Dictionary<int, int[]> getSupportedDevices()
+        public static Dictionary<int, int[]> GetSupportedDevices()
         {
-            Dictionary<int, int[]> supportedDevices = new Dictionary<int, int[]>();
-            supportedDevices.Add(UsbId.VENDOR_FTDI,
-                new[]
+            return new Dictionary<int, int[]>
+            {
                 {
-                    UsbId.FTDI_FT232R,
-                    UsbId.FTDI_FT231X,
-                });
-            return supportedDevices;
+                    UsbId.VendorFtdi, new[]
+                    {
+                        UsbId.FtdiFt232R,
+                        UsbId.FtdiFt231X,
+                    }
+                }
+            };
         }
     }
 }
