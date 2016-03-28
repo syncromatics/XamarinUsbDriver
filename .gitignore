@@ -206,3 +206,5 @@ FakesAssemblies/
 /Components
 /src/Syncromatics.Nucleus.Mdt/Resources/values/Settings.xml
 /src/Syncromatics.Nucleus.Core.Gateway/Syncromatics.Nucleus.Core.Gateway.nuspec
+/src/XamarinUsbDriver/XamarinUsbDriver.nuspec
+/build/SharedAssemblyInfo.cs
