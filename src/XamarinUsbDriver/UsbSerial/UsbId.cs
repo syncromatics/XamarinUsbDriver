@@ -29,8 +29,10 @@ namespace XamarinUsbDriver.UsbSerial
     public static class UsbId
     {
         public static int VendorFtdi = 0x0403;
+
         public static int FtdiFt232R = 0x6001;
         public static int FtdiFt231X = 0x6015;
+        public static int FtdiFt2322 = 0x6010;
 
         public static int VendorAtmel = 0x03EB;
         public static int AtmelLufaCdcDemoApp = 0x2044;
