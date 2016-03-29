@@ -106,8 +106,11 @@ namespace XamarinUsbDriver.UsbSerial
 
         private readonly FtdiSerialDriver _driver;
 
+        private int _index;
+
         public FtdiSerialPort(UsbDevice device, int portNumber, FtdiSerialDriver driver) : base(device, portNumber)
         {
+            _index = portNumber + 1;
             _driver = driver;
         }
 
@@ -140,26 +143,23 @@ namespace XamarinUsbDriver.UsbSerial
             return totalBytesRead - (packetsCount * 2);
         }
 
-        //    /**
-        //     * Filter FTDI status bytes from buffer
-        //     * @param src The source buffer (which contains status bytes)
-        //     * @param dest The destination buffer to write the status bytes into (can be src)
-        //     * @param totalBytesRead Number of bytes read to src
-        //     * @param maxPacketSize The USB endpoint max packet size
-        //     * @return The number of payload bytes
-        //     */
-
         public void Reset()
         {
             int result = Connection.ControlTransfer(FtdiDeviceOutReqtype, _sioResetRequest,
-                SioResetSio, PortNumber + 1, null, 0, USB_WRITE_TIMEOUT_MILLIS);
+                SioResetSio, _index, null, 0, USB_WRITE_TIMEOUT_MILLIS);
             if (result != 0)
             {
                 throw new IOException("Reset failed: result=" + result);
             }
 
-            // TODO(mikey): autodetect.
-            _type = DeviceType.TYPE_R;
+            var productId = Device.ProductId;
+
+            if(productId == 0x6001)
+                _type = DeviceType.TYPE_BM;
+            else if(productId == 0x6010)
+                _type = DeviceType.TYPE_2232H;
+            else if (productId == 0x6011)
+                _type = DeviceType.TYPE_4232H;
         }
 
         public override void Open(UsbDeviceConnection connection)
@@ -212,17 +212,8 @@ namespace XamarinUsbDriver.UsbSerial
 
         public override int Read(byte[] dest, int timeoutMillis)
         {
-            int result = Connection.ControlTransfer(
-                FtdiDeviceOutReqtype, 
-                SIO_SET_LATENCY_TIMER_REQUEST, 
-                255, 
-                PortNumber + 1, 
-                null, 
-                0, 
-                USB_WRITE_TIMEOUT_MILLIS);
-
             UsbEndpoint endpoint = Device.GetInterface(PortNumber).GetEndpoint(0);
-            var direction = endpoint.Direction == UsbAddressing.In;
+
             lock (ReadBufferLock)
             {
                 int readAmt = Math.Min(dest.Length, ReadBuffer.Length);
@@ -277,6 +268,8 @@ namespace XamarinUsbDriver.UsbSerial
         {
             UsbEndpoint endpoint = Device.GetInterface(PortNumber).GetEndpoint(1);
             int offset = 0;
+
+            var outt = endpoint.Direction == UsbAddressing.In;
             using (WriteBufferLock.Lock())
             {
                 while (offset < src.Length)
@@ -329,19 +322,18 @@ namespace XamarinUsbDriver.UsbSerial
 
         private int SetBaudRate(int baudRate)
         {
-            long[] vals = ConvertBaudrate(baudRate);
-            long actualBaudrate = vals[0];
-            long value = vals[2];
+            var vals = GetBaudRate(baudRate);
 
             int result = Connection.ControlTransfer(FtdiDeviceOutReqtype,
-                SioSetBaudRateRequest, (int)value, PortNumber + 1,
+                SioSetBaudRateRequest, vals.Value, vals.Index,
                 null, 0, USB_WRITE_TIMEOUT_MILLIS);
 
             if (result != 0)
             {
                 throw new IOException($"Setting baudrate failed: result={result}");
             }
-            return (int)actualBaudrate;
+
+            return vals.BaudRate;
         }
 
         public override void SetParameters(int baudRate, DataBits dataBits, StopBits stopBits, Parity parity)
@@ -387,7 +379,7 @@ namespace XamarinUsbDriver.UsbSerial
             }
 
             int result = Connection.ControlTransfer(FtdiDeviceOutReqtype,
-                SioSetDataRequest, config, PortNumber + 1,
+                SioSetDataRequest, config, _index,
                 null, 0, USB_WRITE_TIMEOUT_MILLIS);
 
             if (result != 0)
@@ -396,57 +388,237 @@ namespace XamarinUsbDriver.UsbSerial
             }
         }
 
-        private long[] ConvertBaudrate(int baudrate)
+        private uint H_CLK = 120000000;
+        private uint C_CLK = 48000000;
+
+        private BaudRateResponse GetBaudRate(int baudRate)
         {
-            // TODO(mikey): Braindead transcription of libfti method.  Clean up,
-            // using more idiomatic Java where possible.
-            int divisor = 24000000 / baudrate;
-            int bestDivisor = 0;
-            int bestBaud = 0;
-            int bestBaudDiff = 0;
+            int result = 1;
+            int[] divisors = new int[2];
+            int status = 0;
+
+            switch (baudRate)
+            {
+                case 300:
+                    divisors[0] = 10000;
+                    break;
+                case 600:
+                    divisors[0] = 5000;
+                    break;
+                case 1200:
+                    divisors[0] = 2500;
+                    break;
+                case 2400:
+                    divisors[0] = 1250;
+                    break;
+                case 4800:
+                    divisors[0] = 625;
+                    break;
+                case 9600:
+                    divisors[0] = 16696;
+                    break;
+                case 19200:
+                    divisors[0] = 32924;
+                    break;
+                case 38400:
+                    divisors[0] = 49230;
+                    break;
+                case 57600:
+                    divisors[0] = 52;
+                    break;
+                case 115200:
+                    divisors[0] = 26;
+                    break;
+                case 230400:
+                    divisors[0] = 13;
+                    break;
+                case 460800:
+                    divisors[0] = 16390;
+                    break;
+                case 921600:
+                    divisors[0] = 32771;
+                    break;
+                //default:
+                //    if ((isHiSpeed()) && (baudRate >= 1200))
+                //    {
+                //        result = FT_BaudRate.FT_GetDivisorHi(baudRate, divisors);
+                //    }
+                //    else {
+                //        result = FT_BaudRate.FT_GetDivisor(baudRate, divisors,
+                //          isBmDevice());
+                //    }
+                //    status = 255;
+                //    break;
+            }
+
+            if (isMultiIfDevice())
+            {
+                divisors[1] <<= 8;
+                divisors[1] &= 0xFF00;
+                divisors[1] |= _index;
+            }
+
+            return new BaudRateResponse
+            {
+                Index = divisors[1],
+                Value = divisors[0]
+            };
+        }
+
+        private bool isHiSpeed()
+        {
+            return _type == DeviceType.TYPE_232H 
+                || _type == DeviceType.TYPE_2232H 
+                || _type == DeviceType.TYPE_4232H;
+        }
+
+        private bool isBmDevice()
+        {
+            return _type == DeviceType.TYPE_BM;
+            //(isFt232b()) || (isFt2232()) || (isFt232r()) || (isFt2232h()) || (isFt4232h()) || (isFt232h()) || (isFt232ex());
+        }
+
+        bool isMultiIfDevice()
+        {
+            return _type == DeviceType.TYPE_2232H
+                   || _type == DeviceType.TYPE_4232H
+                   || _type == DeviceType.TYPE_2232C;
+        }
+
+        private BaudRateResponse FtdiConverBaudrate(int baudrate)
+        {
+            int bestBaud;
+            ulong encodedDivisor = 0;
+            ushort index;
+
+            if(baudrate <= 0)
+                throw new ArgumentException($"baudrate cannot be 0 or lower", nameof(baudrate));
+
+            if (_type == DeviceType.TYPE_2232H || _type == DeviceType.TYPE_4232H | _type == DeviceType.TYPE_232H)
+            {
+                if (baudrate*10 > H_CLK/0x3fff)
+                {
+                    bestBaud = FtdiToClkbits(baudrate, H_CLK, 10, ref encodedDivisor);
+                    encodedDivisor |= 0x20000;
+                }
+                else
+                {
+                    bestBaud = FtdiToClkbits(baudrate, C_CLK, 16, ref encodedDivisor);
+                }
+            }
+            else if (_type == DeviceType.TYPE_BM || _type == DeviceType.TYPE_2232C || _type == DeviceType.TYPE_R)
+            {
+                bestBaud = FtdiToClkbits(baudrate, C_CLK, 16, ref encodedDivisor);
+            }
+            else
+            {
+                bestBaud = ftdi_to_clkbits_AM(baudrate, ref encodedDivisor);
+            }
+
+            var value = (ushort)(encodedDivisor & 0xffff);
+            if (_type == DeviceType.TYPE_2232H || _type == DeviceType.TYPE_4232H || _type == DeviceType.TYPE_232H)
+            {
+                index = (ushort) (encodedDivisor >> 8);
+                index &= 0xff00;
+                index |= (ushort) (PortNumber + 1);
+            }
+            else
+                index = (ushort) (encodedDivisor >> 16);
+
+            return new BaudRateResponse
+            {
+                Index = index,
+                BaudRate = bestBaud,
+                Value = value
+            };
+        }
+
+        private int FtdiToClkbits(int baudrate, uint clk, int clkDivisor, ref ulong encodedDivisor)
+        {
+            int[] fracCode = { 0, 3, 2, 4, 1, 5, 6, 7 };
+            int bestBaud;
+
+            if (baudrate >= clk/clkDivisor)
+            {
+                encodedDivisor = 0;
+                bestBaud = (int)(clk/clkDivisor);
+            }
+            else if (baudrate >= clk/(clkDivisor + clkDivisor/2))
+            {
+                encodedDivisor = 1;
+                bestBaud = (int)(clk/(2*clkDivisor));
+            }
+            else if (baudrate >= clk/(2*clkDivisor))
+            {
+                encodedDivisor = 2;
+                bestBaud = (int) (clk/(2*clkDivisor));
+            }
+            else
+            {
+                var divisor = (int)(clk*16/clkDivisor/baudrate);
+                int bestDivisor;
+                if ((divisor & 1) > 0)
+                {
+                    bestDivisor = divisor/2 + 1;
+                }
+                else
+                {
+                    bestDivisor = divisor/2;
+                }
+
+                if (bestDivisor > 0x20000)
+                    bestDivisor = 0x1ffff;
+
+                bestBaud = (int)(clk*16/clkDivisor/bestDivisor);
+                encodedDivisor = (ulong)((bestDivisor >> 1) | (fracCode[bestDivisor & 0x7] << 14));
+            }
+
+            return bestBaud;
+        }
+
+        private static int ftdi_to_clkbits_AM(int baudrate, ref ulong encodedDivisor)
+        {
             int[] fracCode = { 0, 3, 2, 4, 1, 5, 6, 7 };
 
-            for (int i = 0; i < 2; i++)
+            int[] amAdjustUp = { 0, 0, 0, 1, 0, 3, 2, 1 };
+
+            int[] amAdjustDn = { 0, 0, 0, 1, 0, 1, 2, 3 };
+
+            int i;
+
+            var divisor = 24000000 / baudrate;
+
+            divisor -= amAdjustDn[divisor & 7];
+
+            var bestDivisor = 0;
+            var bestBaud = 0;
+            var bestBaudDiff = 0;
+
+            for (i = 0; i < 2; i++)
             {
                 int tryDivisor = divisor + i;
+
                 int baudDiff;
 
                 if (tryDivisor <= 8)
                 {
-                    // Round up to minimum supported divisor
                     tryDivisor = 8;
-                }
-                else if (_type != DeviceType.TYPE_AM && tryDivisor < 12)
-                {
-                    // BM doesn't support divisors 9 through 11 inclusive
-                    tryDivisor = 12;
                 }
                 else if (divisor < 16)
                 {
-                    // AM doesn't support divisors 9 through 15 inclusive
                     tryDivisor = 16;
                 }
                 else
                 {
-                    if (_type == DeviceType.TYPE_AM)
+                    tryDivisor += amAdjustUp[tryDivisor & 7];
+                    if (tryDivisor > 0x1fff8)
                     {
-                        // TODO
-                    }
-                    else
-                    {
-                        if (tryDivisor > 0x1FFFF)
-                        {
-                            // Round down to maximum supported divisor value (for
-                            // BM)
-                            tryDivisor = 0x1FFFF;
-                        }
+                        tryDivisor = 0x1fff8;
                     }
                 }
 
-                // Get estimated baud rate (to nearest integer)
-                var baudEstimate = (24000000 + (tryDivisor / 2)) / tryDivisor;
+                var baudEstimate = (24000000 + (tryDivisor/2))/tryDivisor;
 
-                // Get absolute difference from requested baud rate
                 if (baudEstimate < baudrate)
                 {
                     baudDiff = baudrate - baudEstimate;
@@ -458,47 +630,25 @@ namespace XamarinUsbDriver.UsbSerial
 
                 if (i == 0 || baudDiff < bestBaudDiff)
                 {
-                    // Closest to requested baud rate so far
                     bestDivisor = tryDivisor;
                     bestBaud = baudEstimate;
                     bestBaudDiff = baudDiff;
                     if (baudDiff == 0)
-                    {
-                        // Spot on! No point trying
                         break;
-                    }
                 }
             }
 
-            // Encode the best divisor value
-            long encodedDivisor = (bestDivisor >> 3) | (fracCode[bestDivisor & 7] << 14);
-            // Deal with special cases for encoded value
+            encodedDivisor = (ulong)((bestDivisor >> 3) | (fracCode[bestDivisor & 7] << 14));
             if (encodedDivisor == 1)
             {
-                encodedDivisor = 0; // 3000000 baud
+                encodedDivisor = 0;
             }
             else if (encodedDivisor == 0x4001)
             {
-                encodedDivisor = 1; // 2000000 baud (BM only)
+                encodedDivisor = 1;
             }
 
-            // Split into "value" and "index" values
-            long value = encodedDivisor & 0xFFFF;
-            long index;
-            if (_type == DeviceType.TYPE_2232C || _type == DeviceType.TYPE_2232H
-                || _type == DeviceType.TYPE_4232H)
-            {
-                index = (encodedDivisor >> 8) & 0xffff;
-                index &= 0xFF00;
-                index |= PortNumber;
-            }
-            else
-            {
-                index = (encodedDivisor >> 16) & 0xffff;
-            }
-
-            // Return the nearest baud rate
-            return new[] { bestBaud, index, value };
+            return bestBaud;
         }
 
         public override bool Cd => false;
@@ -546,5 +696,12 @@ namespace XamarinUsbDriver.UsbSerial
             }
             return true;
         }
+    }
+
+    public class BaudRateResponse
+    {
+        public int Value { get; set; }
+        public int Index { get; set; }
+        public int BaudRate { get; set; }
     }
 }

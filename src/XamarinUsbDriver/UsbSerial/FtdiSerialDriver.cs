@@ -53,14 +53,9 @@ namespace XamarinUsbDriver.UsbSerial
         {
             Device = device;
 
-            if (device.ProductId == UsbId.FtdiFt2322)
+            for (int i = 0; i < Device.InterfaceCount; i++)
             {
-                Ports.Add(new FtdiSerialPort(Device, 0, this));
-                Ports.Add(new FtdiSerialPort(Device, 1, this));
-            }
-            else
-            {
-                Ports.Add(new FtdiSerialPort(Device, 0, this));
+                Ports.Add(new FtdiSerialPort(Device, i, this));
             }
         }
 
@@ -73,7 +68,8 @@ namespace XamarinUsbDriver.UsbSerial
                     {
                         UsbId.FtdiFt232R,
                         UsbId.FtdiFt231X,
-                        UsbId.FtdiFt2322
+                        UsbId.FtdiFt2322,
+                        UsbId.FtdiFt4232H
                     }
                 }
             };
@@ -86,6 +82,7 @@ namespace XamarinUsbDriver.UsbSerial
         TYPE_2232C,
         TYPE_R,
         TYPE_2232H,
-        TYPE_4232H
+        TYPE_4232H,
+        TYPE_232H
     }
 }

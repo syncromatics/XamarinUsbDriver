@@ -1,14 +1,12 @@
 ﻿using System;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
+using System.Threading;
 using Android.App;
 using Android.Content;
 using Android.Hardware.Usb;
-using Android.Media;
 using Android.OS;
 using XamarinUsbDriver.UsbSerial;
-using Encoding = System.Text.Encoding;
 
 namespace DemoApp
 {
@@ -51,26 +49,22 @@ namespace DemoApp
 
         private void WireupUsb(IUsbSerialDriver device)
         {
-            UsbManager manager = (UsbManager)GetSystemService(UsbService);
+            UsbManager manager = (UsbManager) GetSystemService(UsbService);
 
-            var port1 = device.Ports[0];
-            var port2 = device.Ports[1];
+            var port1 = device.Ports[3];
 
             UsbDeviceConnection connection = manager.OpenDevice(device.Device);
 
             port1.Open(connection);
-            port2.Open(connection);
-
             port1.SetParameters(115200, DataBits._8, StopBits._1, Parity.None);
-            port2.SetParameters(115200, DataBits._8, StopBits._1, Parity.None);
 
-            var message = Encoding.ASCII.GetBytes("hello word");
+            var message = ASCIIEncoding.ASCII.GetBytes("hello josh\r\n");
 
-            port2.Write(message, (int)TimeSpan.FromSeconds(2).TotalMilliseconds);
-
-            byte[] buffer = new byte[100];
-            port1.Read(buffer, (int)TimeSpan.FromSeconds(10).TotalMilliseconds);
-            port1.Read(buffer, (int)TimeSpan.FromSeconds(10).TotalMilliseconds);
+            while (true)
+            {
+                port1.Write(message, (int)TimeSpan.FromSeconds(2).TotalMilliseconds);
+                Thread.Sleep(10);
+            }
         }
     }
 

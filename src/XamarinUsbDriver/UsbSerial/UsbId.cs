@@ -33,6 +33,7 @@ namespace XamarinUsbDriver.UsbSerial
         public static int FtdiFt232R = 0x6001;
         public static int FtdiFt231X = 0x6015;
         public static int FtdiFt2322 = 0x6010;
+        public static int FtdiFt4232H = 0x6011;
 
         public static int VendorAtmel = 0x03EB;
         public static int AtmelLufaCdcDemoApp = 0x2044;
