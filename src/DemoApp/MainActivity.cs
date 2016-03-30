@@ -51,19 +51,29 @@ namespace DemoApp
         {
             UsbManager manager = (UsbManager) GetSystemService(UsbService);
 
-            var port1 = device.Ports[3];
+            var port1 = device.Ports[0];
+            var port2 = device.Ports[1];
 
             UsbDeviceConnection connection = manager.OpenDevice(device.Device);
 
             port1.Open(connection);
-            port1.SetParameters(115200, DataBits._8, StopBits._1, Parity.None);
+            port1.SetParameters(9600, DataBits._8, StopBits._1, Parity.None);
+            port2.Open(connection);
+            port2.SetParameters(9600, DataBits._8, StopBits._1, Parity.None);
 
-            var message = ASCIIEncoding.ASCII.GetBytes("hello josh\r\n");
+            var message = new byte[] {88,1,8,0,159};
+
+            var buffer = new byte[30];
 
             while (true)
             {
                 port1.Write(message, (int)TimeSpan.FromSeconds(2).TotalMilliseconds);
-                Thread.Sleep(10);
+                Thread.Sleep(1000);
+                var bytesRead = port1.Read(buffer, (int) TimeSpan.FromSeconds(10).TotalMilliseconds);
+                if (bytesRead > 0)
+                {
+                    
+                }
             }
         }
     }

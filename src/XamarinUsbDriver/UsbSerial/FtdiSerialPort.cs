@@ -397,72 +397,103 @@ namespace XamarinUsbDriver.UsbSerial
             int[] divisors = new int[2];
             int status = 0;
 
-            switch (baudRate)
+            if (_type != DeviceType.TYPE_4232H)
             {
-                case 300:
-                    divisors[0] = 10000;
-                    break;
-                case 600:
-                    divisors[0] = 5000;
-                    break;
-                case 1200:
-                    divisors[0] = 2500;
-                    break;
-                case 2400:
-                    divisors[0] = 1250;
-                    break;
-                case 4800:
-                    divisors[0] = 625;
-                    break;
-                case 9600:
-                    divisors[0] = 16696;
-                    break;
-                case 19200:
-                    divisors[0] = 32924;
-                    break;
-                case 38400:
-                    divisors[0] = 49230;
-                    break;
-                case 57600:
-                    divisors[0] = 52;
-                    break;
-                case 115200:
-                    divisors[0] = 26;
-                    break;
-                case 230400:
-                    divisors[0] = 13;
-                    break;
-                case 460800:
-                    divisors[0] = 16390;
-                    break;
-                case 921600:
-                    divisors[0] = 32771;
-                    break;
-                //default:
-                //    if ((isHiSpeed()) && (baudRate >= 1200))
-                //    {
-                //        result = FT_BaudRate.FT_GetDivisorHi(baudRate, divisors);
-                //    }
-                //    else {
-                //        result = FT_BaudRate.FT_GetDivisor(baudRate, divisors,
-                //          isBmDevice());
-                //    }
-                //    status = 255;
-                //    break;
+                switch (baudRate)
+                {
+                    case 300:
+                        divisors[0] = 10000;
+                        break;
+                    case 600:
+                        divisors[0] = 5000;
+                        break;
+                    case 1200:
+                        divisors[0] = 2500;
+                        break;
+                    case 2400:
+                        divisors[0] = 1250;
+                        break;
+                    case 4800:
+                        divisors[0] = 625;
+                        break;
+                    case 9600:
+                        divisors[0] = 16696;
+                        break;
+                    case 19200:
+                        divisors[0] = 32924;
+                        break;
+                    case 38400:
+                        divisors[0] = 49230;
+                        break;
+                    case 57600:
+                        divisors[0] = 52;
+                        break;
+                    case 115200:
+                        divisors[0] = 26;
+                        break;
+                    case 230400:
+                        divisors[0] = 13;
+                        break;
+                    case 460800:
+                        divisors[0] = 16390;
+                        break;
+                    case 921600:
+                        divisors[0] = 32771;
+                        break;
+                        //default:
+                        //    if ((isHiSpeed()) && (baudRate >= 1200))
+                        //    {
+                        //        result = FT_BaudRate.FT_GetDivisorHi(baudRate, divisors);
+                        //    }
+                        //    else {
+                        //        result = FT_BaudRate.FT_GetDivisor(baudRate, divisors,
+                        //          isBmDevice());
+                        //    }
+                        //    status = 255;
+                        //    break;
+                }
             }
+            else
+            {
+                divisors[0] = (int)Ftdi2232HBaudToDivisor(baudRate);
+            }
+
+            var urbValue = (UInt16) divisors[0];
+
+            var index = (UInt16) (divisors[0] >> 16);
 
             if (isMultiIfDevice())
             {
-                divisors[1] <<= 8;
-                divisors[1] &= 0xFF00;
-                divisors[1] |= _index;
+                index = (UInt16)((index << 8) | _index);
             }
 
             return new BaudRateResponse
             {
-                Index = divisors[1],
-                Value = divisors[0]
+                Index = index,
+                Value = urbValue
             };
+        }
+
+        private uint Ftdi2232HBaudToDivisor(int baud)
+        {
+            return Ftdi2232HBaudBaseToDivisor(baud, 120000000);
+        }
+
+        private uint Ftdi2232HBaudBaseToDivisor(int baud, int @base)
+        {
+            int[] divfrac = { 0, 3, 2, 4, 1, 5, 6, 7 };
+            uint divisor3 = (uint)(@base / 10 / baud) * 8; // hi-speed baud rate is 10-bit sampling instead of 16-bit
+            uint divisor = divisor3 >> 3;
+            divisor |= (uint)divfrac[divisor3 & 0x7] << 14;
+            /* Deal with special cases for highest baud rates. */
+            if (divisor == 1) divisor = 0;
+            else    // 1.0
+            if (divisor == 0x4001) divisor = 1; // 1.5
+                                                /* Set this bit to turn off a divide by 2.5 on baud rate generator */
+                                                /* This enables baud rates up to 12Mbaud but cannot reach below 1200 baud with this bit set */
+            divisor |= 0x00020000;
+
+            return divisor;
         }
 
         private bool isHiSpeed()
