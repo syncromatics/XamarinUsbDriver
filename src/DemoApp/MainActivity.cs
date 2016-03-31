@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Linq;
-using System.Text;
-using System.Threading;
 using Android.App;
 using Android.Content;
 using Android.Hardware.Usb;
@@ -63,13 +61,12 @@ namespace DemoApp
 
             var message = new byte[] {88,1,8,0,159};
 
-            var buffer = new byte[30];
+            var buffer = new byte[4];
 
             while (true)
             {
                 port1.Write(message, (int)TimeSpan.FromSeconds(2).TotalMilliseconds);
-                Thread.Sleep(1000);
-                var bytesRead = port1.Read(buffer, (int) TimeSpan.FromSeconds(10).TotalMilliseconds);
+                var bytesRead = port1.Read(buffer, (int) TimeSpan.FromSeconds(1).TotalMilliseconds);
                 if (bytesRead > 0)
                 {
                     

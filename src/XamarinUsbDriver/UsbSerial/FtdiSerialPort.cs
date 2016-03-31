@@ -31,6 +31,7 @@
  */
 
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 using Android.Hardware.Usb;
@@ -216,16 +217,32 @@ namespace XamarinUsbDriver.UsbSerial
 
             lock (ReadBufferLock)
             {
-                int readAmt = Math.Min(dest.Length, ReadBuffer.Length);
+                int bytesLeft = dest.Length;
+                int bytesRead = 0;
+                var watch = Stopwatch.StartNew();
 
-                var totalBytesRead = Connection.BulkTransfer(endpoint, ReadBuffer, readAmt, timeoutMillis);
-
-                if (totalBytesRead < ModemStatusHeaderLength)
+                while (watch.ElapsedMilliseconds < timeoutMillis && bytesLeft != 0)
                 {
-                    throw new IOException("Expected at least " + ModemStatusHeaderLength + " bytes");
+                    var bytesToRead = Math.Min(bytesLeft + 2, ReadBuffer.Length);
+                    var totalBytesRead = Connection.BulkTransfer(endpoint, ReadBuffer, bytesToRead, timeoutMillis);
+
+                    if (totalBytesRead == -1)
+                        continue;
+
+                    if (totalBytesRead < ModemStatusHeaderLength)
+                    {
+                        throw new IOException("Expected at least " + ModemStatusHeaderLength + " bytes");
+                    }
+
+                    if (totalBytesRead <= 2)
+                        continue;
+
+                    Buffer.BlockCopy(ReadBuffer, 2, dest, bytesRead, totalBytesRead - 2);
+                    bytesLeft -= totalBytesRead - 2;
+                    bytesRead += totalBytesRead - 2;
                 }
 
-                return filterStatusBytes(ReadBuffer, dest, totalBytesRead, endpoint.MaxPacketSize);
+                return bytesRead;
             }
         }
 

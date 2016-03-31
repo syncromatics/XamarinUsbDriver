@@ -30,8 +30,8 @@ namespace XamarinUsbDriver.UsbSerial
     /// </summary>
     public abstract class CommonUsbSerialPort : IUsbSerialPort
     {
-        public static int DefaultReadBufferSize = 16*1024;
-        public static int DefaultWriteBufferSize = 16*1024;
+        public static int DefaultReadBufferSize = 524;
+        public static int DefaultWriteBufferSize = 524;
 
         /// <summary>
         /// Returns the currently-bound USB device.
