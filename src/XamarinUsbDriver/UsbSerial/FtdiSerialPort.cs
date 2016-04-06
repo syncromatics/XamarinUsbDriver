@@ -283,10 +283,11 @@ namespace XamarinUsbDriver.UsbSerial
 
         public override int Write(byte[] src, int timeoutMillis)
         {
+            int errorCount = 0;
+
             UsbEndpoint endpoint = Device.GetInterface(PortNumber).GetEndpoint(1);
             int offset = 0;
 
-            var outt = endpoint.Direction == UsbAddressing.In;
             using (WriteBufferLock.Lock())
             {
                 while (offset < src.Length)
@@ -298,8 +299,11 @@ namespace XamarinUsbDriver.UsbSerial
 
                     if (amtWritten <= 0)
                     {
-                        throw new IOException(
-                            $"Error writing {writeLength} bytes at offset {offset} length={src.Length}");
+                        errorCount++;
+                        if(errorCount >= 3)
+                            throw new IOException($"Error writing {writeLength} bytes at offset {offset} length={src.Length}");
+
+                        Thread.Sleep(10);
                     }
 
                     Log.Debug(TAG, $"Wrote amtWritten={amtWritten} attempted={writeLength}");
