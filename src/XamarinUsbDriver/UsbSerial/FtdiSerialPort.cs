@@ -304,6 +304,7 @@ namespace XamarinUsbDriver.UsbSerial
                             throw new IOException($"Error writing {writeLength} bytes at offset {offset} length={src.Length}");
 
                         Thread.Sleep(10);
+                        amtWritten = 0;
                     }
 
                     Log.Debug(TAG, $"Wrote amtWritten={amtWritten} attempted={writeLength}");
