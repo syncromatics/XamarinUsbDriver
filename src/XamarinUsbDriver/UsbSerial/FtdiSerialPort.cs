@@ -300,14 +300,13 @@ namespace XamarinUsbDriver.UsbSerial
                     if (amtWritten <= 0)
                     {
                         errorCount++;
-                        if(errorCount >= 3)
-                            throw new IOException($"Error writing {writeLength} bytes at offset {offset} length={src.Length}");
+                        if (errorCount >= 3)
+                            return 0;
 
                         Thread.Sleep(10);
                         amtWritten = 0;
                     }
 
-                    Log.Debug(TAG, $"Wrote amtWritten={amtWritten} attempted={writeLength}");
                     offset += amtWritten;
                 }
             }
