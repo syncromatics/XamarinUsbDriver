@@ -217,13 +217,12 @@ namespace XamarinUsbDriver.UsbSerial
 
             lock (ReadBufferLock)
             {
-                int bytesLeft = dest.Length;
                 int bytesRead = 0;
                 var watch = Stopwatch.StartNew();
 
-                while (watch.ElapsedMilliseconds < timeoutMillis && bytesLeft != 0)
+                while (bytesRead == 0 && watch.ElapsedMilliseconds < timeoutMillis)
                 {
-                    var bytesToRead = Math.Min(bytesLeft + 2, ReadBuffer.Length);
+                    var bytesToRead = Math.Min(dest.Length, ReadBuffer.Length);
                     var totalBytesRead = Connection.BulkTransfer(endpoint, ReadBuffer, bytesToRead, timeoutMillis);
 
                     if (totalBytesRead == -1)
@@ -238,7 +237,6 @@ namespace XamarinUsbDriver.UsbSerial
                         continue;
 
                     Buffer.BlockCopy(ReadBuffer, 2, dest, bytesRead, totalBytesRead - 2);
-                    bytesLeft -= totalBytesRead - 2;
                     bytesRead += totalBytesRead - 2;
                 }
 
