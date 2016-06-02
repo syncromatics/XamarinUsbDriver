@@ -80,8 +80,8 @@ namespace XamarinUsbDriver.UsbSerial
                 throw new Exception("Could not claim data interface.");
             }
 
-            _writeEndpoint = _dataInterface.GetEndpoint(0);
-            _readEndpoint = _dataInterface.GetEndpoint(1);
+            _writeEndpoint = _dataInterface.GetEndpoint(1);
+            _readEndpoint = _dataInterface.GetEndpoint(0);
 
             var isInit = Init();
             var buadSet = SetBaudrate(960000);

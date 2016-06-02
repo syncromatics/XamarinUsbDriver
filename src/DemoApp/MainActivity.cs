@@ -63,7 +63,7 @@ namespace DemoApp
 
             var message = new byte[] {192, 0, 14, 8, 188, 1, 252, 4, 7, 49, 50, 51, 52, 53, 42, 42, 211};
 
-            message = Encoding.ASCII.GetBytes("ver\r");
+            //message = Encoding.ASCII.GetBytes("ver\r");
             var buffer = new byte[20];
 
             while (true)
@@ -73,7 +73,7 @@ namespace DemoApp
                 var bytesRead = port1.Read(buffer, (int)TimeSpan.FromSeconds(1).TotalMilliseconds);
                 if (bytesRead > 0)
                 {
-                    var response = Encoding.ASCII.GetString(buffer, 0, bytesRead);
+                   
                 }
                 Thread.Sleep(50);
 
