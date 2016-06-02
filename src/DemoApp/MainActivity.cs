@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Linq;
+using System.Text;
+using System.Threading;
 using Android.App;
 using Android.Content;
 using Android.Hardware.Usb;
 using Android.OS;
+using Android.Util;
 using XamarinUsbDriver.UsbSerial;
 
 namespace DemoApp
@@ -18,7 +21,10 @@ namespace DemoApp
             base.OnCreate(bundle);
 
             UsbManager manager = (UsbManager)GetSystemService(UsbService);
-            var devices = UsbSerialProber.GetDefaultProber().FindAllDrivers(manager);
+            var devices = UsbSerialProber
+                .GetDefaultProber()
+                .FindAllDrivers(manager)
+                .Where(driver => driver is CdcAcmSerialDriver);
 
             var device = devices.First();
 
@@ -50,27 +56,28 @@ namespace DemoApp
             UsbManager manager = (UsbManager) GetSystemService(UsbService);
 
             var port1 = device.Ports[0];
-            var port2 = device.Ports[1];
 
             UsbDeviceConnection connection = manager.OpenDevice(device.Device);
 
             port1.Open(connection);
-            port1.SetParameters(9600, DataBits._8, StopBits._1, Parity.None);
-            port2.Open(connection);
-            port2.SetParameters(9600, DataBits._8, StopBits._1, Parity.None);
 
-            var message = new byte[] {88,1,8,0,159};
+            var message = new byte[] {192, 0, 14, 8, 188, 1, 252, 4, 7, 49, 50, 51, 52, 53, 42, 42, 211};
 
-            var buffer = new byte[4];
+            message = Encoding.ASCII.GetBytes("ver\r");
+            var buffer = new byte[20];
 
             while (true)
             {
                 port1.Write(message, (int)TimeSpan.FromSeconds(2).TotalMilliseconds);
-                var bytesRead = port1.Read(buffer, (int) TimeSpan.FromSeconds(1).TotalMilliseconds);
+
+                var bytesRead = port1.Read(buffer, (int)TimeSpan.FromSeconds(1).TotalMilliseconds);
                 if (bytesRead > 0)
                 {
-                    
+                    var response = Encoding.ASCII.GetString(buffer, 0, bytesRead);
                 }
+                Thread.Sleep(50);
+
+                Log.Debug("main", "here");
             }
         }
     }

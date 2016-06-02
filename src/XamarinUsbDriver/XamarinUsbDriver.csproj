@@ -46,6 +46,7 @@
     <Compile Include="AsyncLock.cs" />
     <Compile Include="Resources\Resource.Designer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="UsbSerial\CdcAcmSerialDriver.cs" />
     <Compile Include="UsbSerial\CommonUsbSerialPort.cs" />
     <Compile Include="UsbSerial\FtdiSerialDriver.cs" />
     <Compile Include="UsbSerial\FtdiSerialPort.cs" />

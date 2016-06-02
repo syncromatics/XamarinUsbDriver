@@ -42,11 +42,8 @@ namespace XamarinUsbDriver.UsbSerial
         public static ProbeTable GetDefaultProbeTable()
         {
             ProbeTable probeTable = new ProbeTable();
-            //    probeTable.addDriver(CdcAcmSerialDriver.class);
-            //probeTable.addDriver(Cp21xxSerialDriver.class);
+            probeTable.AddDriver(CdcAcmSerialDriver.GetSupportedDevices(), device => new CdcAcmSerialDriver(device));
             probeTable.AddDriver(FtdiSerialDriver.GetSupportedDevices(), device => new FtdiSerialDriver(device));
-            //probeTable.addDriver(ProlificSerialDriver.class);
-            //probeTable.addDriver(Ch34xSerialDriver.class);
             return probeTable;
         }
 
