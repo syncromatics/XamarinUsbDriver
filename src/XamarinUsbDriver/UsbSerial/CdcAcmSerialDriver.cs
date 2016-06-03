@@ -80,10 +80,18 @@ namespace XamarinUsbDriver.UsbSerial
                 throw new Exception("Could not claim data interface.");
             }
 
-            _writeEndpoint = _dataInterface.GetEndpoint(1);
-            _readEndpoint = _dataInterface.GetEndpoint(0);
+            if (Device.VendorId == 0x1cbe)
+            {
+                _writeEndpoint = _dataInterface.GetEndpoint(1);
+                _readEndpoint = _dataInterface.GetEndpoint(0);
+            }
+            else
+            {
+                _writeEndpoint = _dataInterface.GetEndpoint(0);
+                _readEndpoint = _dataInterface.GetEndpoint(1);
+            }
 
-            var isInit = Init();
+            Init();
             var buadSet = SetBaudrate(960000);
         }
 
@@ -141,31 +149,14 @@ namespace XamarinUsbDriver.UsbSerial
 
         public override int Write(byte[] src, int timeoutMillis)
         {
-            int offset = 0;
+            int amtWritten;
 
-            //while (offset < src.Length)
+            lock (WriteBufferLock)
             {
-                int writeLength;
-                int amtWritten;
-
-                lock(WriteBufferLock) {
-
-                    writeLength = src.Length - offset;
-
-                    amtWritten = _connection.BulkTransfer(_writeEndpoint, src, src.Length, timeoutMillis);
-                }
-
-                if (amtWritten <= 0)
-                {
-                    throw new Exception("Error writing " + writeLength
-                            + " bytes at offset " + offset + " length=" + src.Length);
-                }
-
-
-                offset += amtWritten;
+                amtWritten = _connection.BulkTransfer(_writeEndpoint, src, src.Length, timeoutMillis);
             }
 
-            return offset;
+            return amtWritten;
         }
 
         public override Task<int> WriteAsync(byte[] src, int timeoutMillis)
@@ -229,6 +220,6 @@ namespace XamarinUsbDriver.UsbSerial
         }
 
         private int SendAcmControlMessage(int request, int value, byte[] buf) => 
-            _connection.ControlTransfer((UsbAddressing)UsbRtAcm, request, value, 1, buf, buf?.Length ?? 0, 5000);
+            _connection.ControlTransfer((UsbAddressing)UsbRtAcm, request, value, 1, buf, buf?.Length ?? 0, 100);
     }
 }
