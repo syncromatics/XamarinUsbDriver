@@ -24,7 +24,7 @@ namespace DemoApp
             var devices = UsbSerialProber
                 .GetDefaultProber()
                 .FindAllDrivers(manager)
-                .Where(driver => driver is CdcAcmSerialDriver);
+                .Where(driver => driver is HidSerialDriver);
 
             var device = devices.First();
 
@@ -61,23 +61,21 @@ namespace DemoApp
 
             port1.Open(connection);
 
-            var message = new byte[] {192, 0, 14, 8, 188, 1, 252, 4, 7, 49, 50, 51, 52, 53, 42, 42, 211};
+            var buffer = new byte[500];
 
-            //message = Encoding.ASCII.GetBytes("ver\r");
-            var buffer = new byte[20];
+            Log.Debug("main", "here");
 
             while (true)
             {
-                port1.Write(message, (int)TimeSpan.FromSeconds(2).TotalMilliseconds);
+                //port1.Write(message, (int)TimeSpan.FromSeconds(2).TotalMilliseconds);
 
                 var bytesRead = port1.Read(buffer, (int)TimeSpan.FromSeconds(1).TotalMilliseconds);
                 if (bytesRead > 0)
                 {
-                   
+                    var str = Encoding.ASCII.GetString(buffer);
+                    Log.Debug("card read", str);
                 }
                 Thread.Sleep(50);
-
-                Log.Debug("main", "here");
             }
         }
     }

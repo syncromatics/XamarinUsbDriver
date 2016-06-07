@@ -66,5 +66,8 @@ namespace XamarinUsbDriver.UsbSerial
 
         public static int VendorQinheng = 0x1a86;
         public static int QinhengHl340 = 0x7523;
+
+        public static int VendorMagtek = 0x0801;
+        public static int MagtekSureSwipe = 0x0002;
     }
 }

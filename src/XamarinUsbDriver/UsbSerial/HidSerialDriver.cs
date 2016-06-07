@@ -3,27 +3,23 @@ using Android.Hardware.Usb;
 
 namespace XamarinUsbDriver.UsbSerial
 {
-    public class CdcAcmSerialDriver : IUsbSerialDriver
+    public class HidSerialDriver : IUsbSerialDriver
     {
         public UsbDevice Device { get; }
+
         public List<IUsbSerialPort> Ports { get; }
 
-        public CdcAcmSerialDriver(UsbDevice device)
+        public HidSerialDriver(UsbDevice device)
         {
             Device = device;
-            Ports = new List<IUsbSerialPort> {new CdcAcmSerialPort(device, 0)};
+            Ports = new List<IUsbSerialPort> {new HidSerialPort(device, 0)};
         }
 
         public static Dictionary<int, int[]> GetSupportedDevices()
         {
             return new Dictionary<int, int[]>
             {
-                {
-                    0x1cbe, new[] {0x9652}
-                },
-                {
-                    0x2a19, new[] {0x800}
-                }
+                {UsbId.VendorMagtek, new[] {UsbId.MagtekSureSwipe}}
             };
         }
     }
