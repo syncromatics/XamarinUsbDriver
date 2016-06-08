@@ -24,7 +24,7 @@ namespace DemoApp
             var devices = UsbSerialProber
                 .GetDefaultProber()
                 .FindAllDrivers(manager)
-                .Where(driver => driver is HidSerialDriver);
+                .Where(driver => driver is FtdiSerialDriver);
 
             var device = devices.First();
 
@@ -65,16 +65,19 @@ namespace DemoApp
 
             Log.Debug("main", "here");
 
+            int bytesRead = 0;
+            var timeout = (int) TimeSpan.FromSeconds(1).TotalMilliseconds;
+
             while (true)
             {
                 //port1.Write(message, (int)TimeSpan.FromSeconds(2).TotalMilliseconds);
 
-                var bytesRead = port1.Read(buffer, (int)TimeSpan.FromSeconds(1).TotalMilliseconds);
-                if (bytesRead > 0)
-                {
-                    var str = Encoding.ASCII.GetString(buffer);
-                    Log.Debug("card read", str);
-                }
+                bytesRead = port1.Read(buffer, timeout);
+                //if (bytesRead > 0)
+                //{
+                //    var str = Encoding.ASCII.GetString(buffer);
+                //    Log.Debug("card read", str);
+                //}
                 Thread.Sleep(50);
             }
         }

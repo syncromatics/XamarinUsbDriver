@@ -35,6 +35,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 using Android.Hardware.Usb;
+using Android.OS;
 using Android.Util;
 using Java.Lang;
 using Java.Nio;
@@ -108,6 +109,8 @@ namespace XamarinUsbDriver.UsbSerial
         private readonly FtdiSerialDriver _driver;
 
         private int _index;
+
+        private UsbEndpoint _readEndpoint;
 
         public FtdiSerialPort(UsbDevice device, int portNumber, FtdiSerialDriver driver) : base(device, portNumber)
         {
@@ -184,6 +187,8 @@ namespace XamarinUsbDriver.UsbSerial
                 }
                 Reset();
                 opened = true;
+
+                _readEndpoint = Device.GetInterface(PortNumber).GetEndpoint(0);
             }
             finally
             {
@@ -210,38 +215,18 @@ namespace XamarinUsbDriver.UsbSerial
                 Connection = null;
             }
         }
+        
+        private int _totalBytesRead;
 
         public override int Read(byte[] dest, int timeoutMillis)
         {
-            UsbEndpoint endpoint = Device.GetInterface(PortNumber).GetEndpoint(0);
+            _totalBytesRead = Connection.BulkTransfer(_readEndpoint, ReadBuffer, dest.Length, 40);
 
-            lock (ReadBufferLock)
-            {
-                int bytesRead = 0;
-                var watch = Stopwatch.StartNew();
+            if (_totalBytesRead <= 2)
+                return 0;
 
-                while (bytesRead == 0 && watch.ElapsedMilliseconds < timeoutMillis)
-                {
-                    var bytesToRead = Math.Min(dest.Length, ReadBuffer.Length);
-                    var totalBytesRead = Connection.BulkTransfer(endpoint, ReadBuffer, bytesToRead, timeoutMillis);
-
-                    if (totalBytesRead == -1)
-                        continue;
-
-                    if (totalBytesRead < ModemStatusHeaderLength)
-                    {
-                        throw new IOException("Expected at least " + ModemStatusHeaderLength + " bytes");
-                    }
-
-                    if (totalBytesRead <= 2)
-                        continue;
-
-                    Buffer.BlockCopy(ReadBuffer, 2, dest, bytesRead, totalBytesRead - 2);
-                    bytesRead += totalBytesRead - 2;
-                }
-
-                return bytesRead;
-            }
+            Buffer.BlockCopy(ReadBuffer, 2, dest, 0, _totalBytesRead - 2);
+            return _totalBytesRead-2;
         }
 
         public override async Task<int> ReadAsync(byte[] dest, int timeoutMillis)
