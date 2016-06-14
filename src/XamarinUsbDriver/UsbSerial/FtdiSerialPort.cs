@@ -222,46 +222,19 @@ namespace XamarinUsbDriver.UsbSerial
         {
             _totalBytesRead = Connection.BulkTransfer(_readEndpoint, ReadBuffer, dest.Length, 40);
 
+            if (_totalBytesRead == -1)
+                return -1;
+
             if (_totalBytesRead <= 2)
                 return 0;
 
             Buffer.BlockCopy(ReadBuffer, 2, dest, 0, _totalBytesRead - 2);
-            return _totalBytesRead-2;
+            return _totalBytesRead - 2;
         }
 
         public override async Task<int> ReadAsync(byte[] dest, int timeoutMillis)
         {
-            UsbEndpoint endpoint = Device.GetInterface(PortNumber).GetEndpoint(0);
-
-            int readAmt;
-            lock (ReadBufferLock)
-            {
-                // mReadBuffer is only used for maximum read size.
-                readAmt = Math.Min(dest.Length, ReadBuffer.Length);
-            }
-
-            UsbRequest request = new UsbRequest();
-            request.Initialize(Connection, endpoint);
-
-            ByteBuffer buf = ByteBuffer.Wrap(dest);
-            if (!request.Queue(buf, readAmt))
-            {
-                throw new IOException("Error queueing request.");
-            }
-
-            UsbRequest response = Connection.RequestWait();
-            if (response == null)
-            {
-                throw new IOException("Null response");
-            }
-
-            int payloadBytesRead = buf.Position() - ModemStatusHeaderLength;
-            if (payloadBytesRead <= 0)
-                return 0;
-
-            Log.Debug(TAG, BitConverter.ToString(dest, 0, Math.Min(32, dest.Length)));
-
-            return filterStatusBytes(dest, dest, buf.Position(), endpoint.MaxPacketSize);
+            throw new NotImplementedException();
         }
 
         public override int Write(byte[] src, int timeoutMillis)
@@ -298,29 +271,7 @@ namespace XamarinUsbDriver.UsbSerial
 
         public override async Task<int> WriteAsync(byte[] src, int timeoutMillis)
         {
-            UsbEndpoint endpoint = Device.GetInterface(PortNumber).GetEndpoint(1);
-            int offset = 0;
-
-            using (await WriteBufferLock.LockAsync())
-            {
-                while (offset < src.Length)
-                {
-                    var writeLength = Math.Min(src.Length - offset, WriteBuffer.Length);
-
-                    var amtWritten = await Connection.BulkTransferAsync(endpoint, src, offset, writeLength,
-                        timeoutMillis);
-
-                    if (amtWritten <= 0)
-                    {
-                        return amtWritten;
-                    }
-
-                    Log.Debug(TAG, $"Wrote amtWritten={amtWritten} attempted={writeLength}");
-                    offset += amtWritten;
-                }
-
-            }
-            return offset;
+            throw new NotImplementedException();
         }
 
         private int SetBaudRate(int baudRate)
