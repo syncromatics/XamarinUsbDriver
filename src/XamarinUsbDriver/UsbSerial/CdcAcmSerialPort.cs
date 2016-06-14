@@ -112,6 +112,9 @@ namespace XamarinUsbDriver.UsbSerial
                     // Hack: Special case "~infinite timeout" as an error.
                     return -1;
                 }
+
+                if (numBytesRead == -1)
+                    return -1;
                 return 0;
             }
         }
