@@ -38,7 +38,8 @@ namespace XamarinUsbDriver.UsbSerial
                 throw new Exception("Could not claim control interface.");
             }
 
-            //_writeEndpoint = intf.GetEndpoint(1);
+            _writeEndpoint = intf.GetEndpoint(1);
+
             _readEndpoint = intf.GetEndpoint(0);
             _buffer = new byte[_readEndpoint.MaxPacketSize];
         }
@@ -83,7 +84,14 @@ namespace XamarinUsbDriver.UsbSerial
 
         public override int Write(byte[] src, int timeoutMillis)
         {
-            throw new NotImplementedException();
+            int amtWritten;
+
+            lock (WriteBufferLock)
+            {
+                amtWritten = _connection.BulkTransfer(_writeEndpoint, src, src.Length, timeoutMillis);
+            }
+
+            return amtWritten;
         }
 
         public override Task<int> WriteAsync(byte[] src, int timeoutMillis)

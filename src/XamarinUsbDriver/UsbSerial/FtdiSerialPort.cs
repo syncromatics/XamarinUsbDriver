@@ -31,14 +31,11 @@
  */
 
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 using Android.Hardware.Usb;
-using Android.OS;
 using Android.Util;
 using Java.Lang;
-using Java.Nio;
 using Buffer = System.Buffer;
 using Math = System.Math;
 

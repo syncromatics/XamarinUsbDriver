@@ -56,6 +56,8 @@
     <Compile Include="UsbSerial\IUsbSerialDriver.cs" />
     <Compile Include="UsbSerial\IUsbSerialPort.cs" />
     <Compile Include="UsbSerial\ProbeTable.cs" />
+    <Compile Include="UsbSerial\ProlificSerialDriver.cs" />
+    <Compile Include="UsbSerial\ProlificSerialPort.cs" />
     <Compile Include="UsbSerial\UsbId.cs" />
     <Compile Include="UsbSerial\UsbSerialProber.cs" />
   </ItemGroup>

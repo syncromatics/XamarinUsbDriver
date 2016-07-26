@@ -8,6 +8,7 @@ using Android.Hardware.Usb;
 using Android.OS;
 using Android.Util;
 using XamarinUsbDriver.UsbSerial;
+using Debug = System.Diagnostics.Debug;
 
 namespace DemoApp
 {
@@ -23,11 +24,14 @@ namespace DemoApp
             UsbManager manager = (UsbManager)GetSystemService(UsbService);
             var devices = UsbSerialProber
                 .GetDefaultProber()
-                .FindAllDrivers(manager)
-                .Where(driver => driver is FtdiSerialDriver);
+                .FindAllDrivers(manager);
+
+            devices
+                .Select(d => d.Device.DeviceId)
+                .ToList()
+                .ForEach(id => Debug.WriteLine(id));
 
             var device = devices.First();
-
             if (!manager.HasPermission(device.Device))
             {
                 var usbPermission = "DemoApp.DemoApp.USB_PERMISSION";
@@ -60,6 +64,7 @@ namespace DemoApp
             UsbDeviceConnection connection = manager.OpenDevice(device.Device);
 
             port1.Open(connection);
+            port1.SetParameters(115200, DataBits._8, StopBits._1, Parity.None);
 
             var buffer = new byte[500];
 
@@ -70,14 +75,13 @@ namespace DemoApp
 
             while (true)
             {
-                //port1.Write(message, (int)TimeSpan.FromSeconds(2).TotalMilliseconds);
-
+                port1.Write(Encoding.ASCII.GetBytes("yarrrrrom"), 5000);
                 bytesRead = port1.Read(buffer, timeout);
-                //if (bytesRead > 0)
-                //{
-                //    var str = Encoding.ASCII.GetString(buffer);
-                //    Log.Debug("card read", str);
-                //}
+                if (bytesRead > 0)
+                {
+                    var str = Encoding.ASCII.GetString(buffer, 0, bytesRead);
+                    Log.Debug("card read", str);
+                }
                 Thread.Sleep(50);
             }
         }
