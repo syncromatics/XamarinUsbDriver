@@ -201,7 +201,7 @@ namespace XamarinUsbDriver.UsbSerial
         {
             if (Connection == null)
             {
-                throw new IOException("Already closed");
+                return;
             }
             try
             {
