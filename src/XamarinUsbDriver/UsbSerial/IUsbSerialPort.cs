@@ -67,6 +67,8 @@ namespace XamarinUsbDriver.UsbSerial
     {
         IUsbSerialDriver Driver { get; }
 
+        UsbDevice Device { get; }
+
         /// <summary>
         /// Port number within driver.
         /// </summary>
