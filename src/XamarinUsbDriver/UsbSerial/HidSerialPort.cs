@@ -38,7 +38,10 @@ namespace XamarinUsbDriver.UsbSerial
                 throw new Exception("Could not claim control interface.");
             }
 
-            _writeEndpoint = intf.GetEndpoint(1);
+            if (intf.EndpointCount > 1)
+            {
+                _writeEndpoint = intf.GetEndpoint(1);
+            }
 
             _readEndpoint = intf.GetEndpoint(0);
             _buffer = new byte[_readEndpoint.MaxPacketSize];
@@ -84,6 +87,11 @@ namespace XamarinUsbDriver.UsbSerial
 
         public override int Write(byte[] src, int timeoutMillis)
         {
+            if (_writeEndpoint == null)
+            {
+                throw new Exception("Device does not have a write endpoint.");
+            }
+
             int amtWritten;
 
             lock (WriteBufferLock)
