@@ -146,6 +146,8 @@ namespace XamarinUsbDriver.UsbSerial
         /// </summary>
         bool Cts { get; }
 
+        event EventHandler<bool> CtsChanged;
+
         /// <summary>
         /// Gets the DSR (Data Set Ready) bit from the underlying UART.
         /// </summary>

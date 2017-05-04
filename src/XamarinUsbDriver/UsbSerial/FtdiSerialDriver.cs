@@ -71,6 +71,12 @@ namespace XamarinUsbDriver.UsbSerial
                         UsbId.FtdiFt2322,
                         UsbId.FtdiFt4232H
                     }
+                },
+                {
+                    UsbId.VendorSyncromatics, new[]
+                    {
+                        UsbId.SyncromaticsCovertAlarm
+                    }
                 }
             };
         }

@@ -15,7 +15,7 @@ namespace XamarinUsbDriver.UsbSerial
         private static int SEND_BREAK = 0x23;
 
         public override bool Cd { get; }
-        public override bool Cts { get; }
+        public override bool Cts { get; set; }
         public override bool Dsr { get; }
         public override bool Dtr { get; set; }
         public override bool Ri { get; }
@@ -198,5 +198,7 @@ namespace XamarinUsbDriver.UsbSerial
 
         private int SendAcmControlMessage(int request, int value, byte[] buf) => 
             _connection.ControlTransfer((UsbAddressing)UsbRtAcm, request, value, 1, buf, buf?.Length ?? 0, 100);
+
+        public override event EventHandler<bool> CtsChanged;
     }
 }

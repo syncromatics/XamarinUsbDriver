@@ -8,7 +8,7 @@ namespace XamarinUsbDriver.UsbSerial
     public class HidSerialPort : CommonUsbSerialPort
     {
         public override bool Cd { get; }
-        public override bool Cts { get; }
+        public override bool Cts { get; set; }
         public override bool Dsr { get; }
         public override bool Dtr { get; set; }
         public override bool Ri { get; }
@@ -110,5 +110,7 @@ namespace XamarinUsbDriver.UsbSerial
         public override void SetParameters(int baudRate, DataBits dataBits, StopBits stopBits, Parity parity)
         {
         }
+
+        public override event EventHandler<bool> CtsChanged;
     }
 }

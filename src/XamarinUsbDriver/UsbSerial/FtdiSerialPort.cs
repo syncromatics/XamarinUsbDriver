@@ -60,6 +60,14 @@ namespace XamarinUsbDriver.UsbSerial
         public static int USB_WRITE_TIMEOUT_MILLIS = 5000;
         public static int USB_READ_TIMEOUT_MILLIS = 5000;
 
+        public static int SIO_SET_RTS_MASK = 0x2;
+        public static int SIO_SET_RTS_HIGH = 2 | (SIO_SET_RTS_MASK << 8);
+        public static int SIO_SET_RTS_LOW = 0 | (SIO_SET_RTS_MASK << 8);
+
+        public static int SIO_SET_DTR_MASK = 0x1;
+        public static int SIO_SET_DTR_HIGH = (1 | (SIO_SET_DTR_MASK << 8));
+        public static int SIO_SET_DTR_LOW = (0 | (SIO_SET_DTR_MASK << 8));
+
         //    // From ftdi.h
         //    /**
         //     * Reset the port.
@@ -215,9 +223,15 @@ namespace XamarinUsbDriver.UsbSerial
         
         private int _totalBytesRead;
 
+        private readonly byte[] _statusBytes = new byte[2];
+
         public override int Read(byte[] dest, int timeoutMillis)
         {
             _totalBytesRead = Connection.BulkTransfer(_readEndpoint, ReadBuffer, dest.Length, 40);
+
+            Buffer.BlockCopy(ReadBuffer, 0, _statusBytes, 0, 2);
+
+            Cts = (_statusBytes[0] & (1 << 4)) > 0;
 
             if (_totalBytesRead == -1)
                 return -1;
@@ -225,7 +239,9 @@ namespace XamarinUsbDriver.UsbSerial
             if (_totalBytesRead <= 2)
                 return 0;
 
+
             Buffer.BlockCopy(ReadBuffer, 2, dest, 0, _totalBytesRead - 2);
+
             return _totalBytesRead - 2;
         }
 
@@ -635,7 +651,22 @@ namespace XamarinUsbDriver.UsbSerial
 
         public override bool Cd => false;
 
-        public override bool Cts => false;
+        private bool _cts;
+        public override bool Cts
+        {
+            get { return _cts; }
+            set
+            {
+                if (_cts == value)
+                    return;
+
+                _cts = value;
+
+                CtsChanged?.Invoke(this, _cts);
+            }
+        }
+
+        public override event EventHandler<bool> CtsChanged;
 
         public override bool Dsr => false;
 
@@ -647,10 +678,33 @@ namespace XamarinUsbDriver.UsbSerial
 
         public override bool Ri => false;
 
+        private bool _rts;
+
         public override bool Rts
         {
-            get { return false; }
-            set { }
+            get { return _rts; }
+            set
+            {
+                if (value == _rts)
+                    return;
+
+                _rts = value;
+
+                ushort usbValue = (ushort)SIO_SET_DTR_LOW;
+
+                if (_rts)
+                    usbValue |= (ushort)SIO_SET_RTS_HIGH;
+                else
+                    usbValue |= (ushort)SIO_SET_RTS_LOW;
+
+                int result = Connection.ControlTransfer(FtdiDeviceOutReqtype, _sioModemCtrlRequest,
+                    usbValue, PortNumber + 1, null, 0, USB_WRITE_TIMEOUT_MILLIS);
+
+                if (result != 0)
+                {
+                    throw new IOException("Set RTS failed result=" + result);
+                }
+            }
         }
 
         public new bool PurgeHwBuffers(bool purgeReadBuffers, bool purgeWriteBuffers)

@@ -123,7 +123,9 @@ namespace XamarinUsbDriver.UsbSerial
 
         public abstract bool Cd { get; }
 
-        public abstract bool Cts { get; }
+        public abstract bool Cts { get; set; }
+
+        public abstract event EventHandler<bool> CtsChanged;
 
         public abstract bool Dsr { get; }
 

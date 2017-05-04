@@ -24,7 +24,9 @@ namespace DemoApp
             UsbManager manager = (UsbManager)GetSystemService(UsbService);
             var devices = UsbSerialProber
                 .GetDefaultProber()
-                .FindAllDrivers(manager);
+                .FindAllDrivers(manager)
+                .Where(d => d.Device.VendorId == UsbId.VendorSyncromatics)
+                .ToList();
 
             devices
                 .Select(d => d.Device.DeviceId)
@@ -70,13 +72,13 @@ namespace DemoApp
 
             Log.Debug("main", "here");
 
-            int bytesRead = 0;
             var timeout = (int) TimeSpan.FromSeconds(1).TotalMilliseconds;
+            port1.CtsChanged += Port1_CtsChanged;
+            port1.Rts = true;
 
             while (true)
             {
-                port1.Write(Encoding.ASCII.GetBytes("yarrrrrom"), 5000);
-                bytesRead = port1.Read(buffer, timeout);
+                var bytesRead = port1.Read(buffer, timeout);
                 if (bytesRead > 0)
                 {
                     var str = Encoding.ASCII.GetString(buffer, 0, bytesRead);
@@ -84,6 +86,11 @@ namespace DemoApp
                 }
                 Thread.Sleep(50);
             }
+        }   
+
+        private void Port1_CtsChanged(object sender, bool e)
+        {
+            Console.WriteLine("button Triggered: " + e);
         }
     }
 
