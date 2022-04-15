@@ -67,6 +67,7 @@ namespace XamarinUsbDriver.UsbSerial
 
         public static int VendorProlific = 0x067b;
         public static int ProlificPl2303 = 0x2303;
+        public static int ProlificPl23A3 = 0x23A3;
 
         public static int VendorQinheng = 0x1a86;
         public static int QinhengHl340 = 0x7523;
