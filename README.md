@@ -17,4 +17,4 @@ We welcome contributions and collaboration on this project. Please read our [con
 [![license](https://img.shields.io/github/license/syncromatics/XamarinUsbDriver.svg)](https://github.com/syncromatics/XamarinUsbDriver/blob/master/LICENSE)
 [![GitHub contributors](https://img.shields.io/github/contributors/syncromatics/XamarinUsbDriver.svg)](https://github.com/syncromatics/XamarinUsbDriver/graphs/contributors)
 
-This software is made available by GMV Syncromatics Engineering under the  GNU LESSER GENERAL PUBLIC LICENSE.
+This software is made available by GMV Syncromatics Engineering under the GNU LESSER GENERAL PUBLIC LICENSE.
