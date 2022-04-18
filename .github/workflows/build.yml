@@ -37,7 +37,7 @@ jobs:
           tag_name: ${{ steps.gogitver.outputs.version }}
           release_name: Release ${{ steps.gogitver.outputs.version }}
           draft: false
-          prerelease: false
+          prerelease: ${{ github.ref != 'refs/heads/master' }}
 
       - name: Push the NuGet package
         run: dotnet nuget push src/XamarinUsbDriver/bin/Release/*.nupkg -k $NUGET_API_KEY -s https://www.nuget.org/api/v2/package
