@@ -1,0 +1,6 @@
+{
+  "yaml.schemas": {
+    "file:///Users/djames/.vscode-insiders/extensions/atlassian.atlascode-2.10.11/resources/schemas/pipelines-schema.json": "bitbucket-pipelines.yml",
+    "https://json.schemastore.org/github-workflow.json": "file:///Users/djames/source/syncromatics/XamarinUsbDriver/.github/workflows/build.yml"
+  }
+}

@@ -1,0 +1,43 @@
+name: build
+on: [push]
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set default Xamarin SDK versions
+        run: $VM_ASSETS/select-xamarin-sdk-v2.sh --mono=6.12 --android=12.2
+
+      - name: Setup .NET Core SDK 5.0.x
+        uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: "5.0.x"
+
+      - name: Install dependencies
+        run: nuget restore XamarinUsbDriver.sln
+
+      - uses: syncromatics/gogitver-action@v0.0.4
+        id: gogitver
+
+      - name: Build
+        run: msbuild src/XamarinUsbDriver/XamarinUsbDriver.csproj /t:Rebuild /p:Configuration=Release /p:Version="$VERSION"
+        env:
+          VERSION: ${{ steps.gogitver.outputs.version }}
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.gogitver.outputs.version }}
+          release_name: Release ${{ steps.gogitver.outputs.version }}
+          draft: false
+          prerelease: false
+
+      - name: Push the NuGet package
+        run: dotnet nuget push src/XamarinUsbDriver/bin/Release/*.nupkg -k $NUGET_API_KEY -s https://www.nuget.org/api/v2/package
+        env:
+          VERSION: ${{ steps.gogitver.outputs.version }}
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}

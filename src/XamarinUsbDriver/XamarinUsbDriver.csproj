@@ -1,5 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="..\..\packages\NuGet.Build.Packaging.0.2.5-dev.8\build\NuGet.Build.Packaging.props" Condition="Exists('..\..\packages\NuGet.Build.Packaging.0.2.5-dev.8\build\NuGet.Build.Packaging.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
@@ -14,8 +15,14 @@
     <FileAlignment>512</FileAlignment>
     <AndroidResgenFile>Resources\Resource.Designer.cs</AndroidResgenFile>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
-    <AndroidUseLatestPlatformSdk>True</AndroidUseLatestPlatformSdk>
     <TargetFrameworkVersion>v7.1</TargetFrameworkVersion>
+    <PackOnBuild>true</PackOnBuild>
+    <PackageId>XamarinUsbDriver</PackageId>
+    <Version Condition="'$(Version)' == ''">0.0.0-development</Version>
+    <PackageVersion Condition="'$(PackageVersion)' == ''">$([System.Text.RegularExpressions.Regex]::Replace($(Version), '^v', '', System.Text.RegularExpressions.RegexOptions.IgnoreCase))</PackageVersion>
+    <AssemblyVersion Condition="'$(AssemblyVersion)' == ''">$([System.Text.RegularExpressions.Regex]::Replace($(Version), '^v|-.+$', '', System.Text.RegularExpressions.RegexOptions.IgnoreCase))</AssemblyVersion>
+    <Authors>syncromatics</Authors>
+    <Description>Serial drivers for xamarin android</Description>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -63,16 +70,20 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\AboutResources.txt" />
+    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <AndroidResource Include="Resources\Values\Strings.xml" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Xamarin\Android\Xamarin.Android.CSharp.targets" />
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
-       Other similar extension points exist, see Microsoft.Common.targets.
-  <Target Name="BeforeBuild">
+  <Import Project="..\..\packages\NuGet.Build.Packaging.0.2.5-dev.8\build\NuGet.Build.Packaging.targets" Condition="Exists('..\..\packages\NuGet.Build.Packaging.0.2.5-dev.8\build\NuGet.Build.Packaging.targets')" />
+  <Target Name="BeforeResGen">
+    <PropertyGroup>
+      <AssemblyInfoFile>Properties\AssemblyInfo.cs</AssemblyInfoFile>
+      <AssemblyInfoFromLines>$([System.IO.File]::ReadAllText($(AssemblyInfoFile)))</AssemblyInfoFromLines>
+      <AssemblyInfoToLinesIntermediate>$([System.Text.RegularExpressions.Regex]::Replace($(AssemblyInfoFromLines), '\[assembly\s*:\s*AssemblyVersion\b.+\]', '[assembly: AssemblyVersion("$(AssemblyVersion)")]'))</AssemblyInfoToLinesIntermediate>
+      <AssemblyInfoToLines>$([System.Text.RegularExpressions.Regex]::Replace($(AssemblyInfoToLinesIntermediate), '\[assembly\s*:\s*AssemblyFileVersion\b.+\]', '[assembly: AssemblyFileVersion("$(PackageVersion)")]'))</AssemblyInfoToLines>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(AssemblyInfoFile)" Lines="$(AssemblyInfoToLines)" Overwrite="true" Encoding="UTF-8" />
   </Target>
-  <Target Name="AfterBuild">
-  </Target>
-  -->
 </Project>
