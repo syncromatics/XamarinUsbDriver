@@ -1,8 +1,17 @@
 name: build
 on: [push]
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: syncromatics/gogitver-action@v0.0.4
+        id: gogitver
   build:
     runs-on: macos-latest
+    needs:
+      - version
     steps:
       - uses: actions/checkout@v3
 
@@ -16,9 +25,6 @@ jobs:
 
       - name: Install dependencies
         run: nuget restore XamarinUsbDriver.sln
-
-      - uses: syncromatics/gogitver-action@v0.0.4
-        id: gogitver
 
       - name: Build
         run: msbuild src/XamarinUsbDriver/XamarinUsbDriver.csproj /t:Rebuild /p:Configuration=Release /p:Version="$VERSION"
