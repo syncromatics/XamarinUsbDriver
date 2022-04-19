@@ -7,23 +7,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XamarinUsbDriver", "src\Xam
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DemoApp", "src\DemoApp\DemoApp.csproj", "{0FDCE4B0-4326-43D4-8FE8-8DD8F26ADAA2}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "build", "build", "{62056B74-9F24-4D97-A594-70D823533072}"
-	ProjectSection(SolutionItems) = preProject
-		rakefile.rb = rakefile.rb
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tasks", "tasks", "{6A720E47-9398-435D-BC19-5CD5B696EEC0}"
-	ProjectSection(SolutionItems) = preProject
-		build\tasks\build.rb = build\tasks\build.rb
-		build\tasks\nuget.rb = build\tasks\nuget.rb
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "config", "config", "{842884F5-A796-42FC-83A3-F49E6C4BB2CB}"
-	ProjectSection(SolutionItems) = preProject
-		build\config\config.rb = build\config\config.rb
-		build\config\paths.rb = build\config\paths.rb
-	EndProjectSection
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -43,9 +26,5 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
-		{6A720E47-9398-435D-BC19-5CD5B696EEC0} = {62056B74-9F24-4D97-A594-70D823533072}
-		{842884F5-A796-42FC-83A3-F49E6C4BB2CB} = {62056B74-9F24-4D97-A594-70D823533072}
 	EndGlobalSection
 EndGlobal
