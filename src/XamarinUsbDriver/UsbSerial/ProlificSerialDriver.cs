@@ -26,7 +26,8 @@ namespace XamarinUsbDriver.UsbSerial
                 {
                     UsbId.VendorProlific, new[]
                     {
-                        UsbId.ProlificPl2303
+                        UsbId.ProlificPl2303,
+                        UsbId.ProlificPl23A3,
                     }
                 }
             };
