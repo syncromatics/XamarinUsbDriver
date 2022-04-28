@@ -10,7 +10,7 @@ namespace XamarinUsbDriver.UsbSerial
     public class ProlificSerialPort : CommonUsbSerialPort
     {
         public override bool Cd { get; }
-        public override bool Cts { get; set;  }
+        public override bool Cts { get; set; }
         public override bool Dsr { get; }
         public override bool Dtr { get; set; }
         public override bool Ri { get; }
@@ -24,15 +24,17 @@ namespace XamarinUsbDriver.UsbSerial
         private static int PROLIFIC_VENDOR_READ_REQUEST = 0x01;
         private static int PROLIFIC_VENDOR_WRITE_REQUEST = 0x01;
 
+        private static int PL2303_READ_TYPE_HX_STATUS = 0x8080;
+
         private static UsbAddressing PROLIFIC_VENDOR_OUT_REQTYPE = (UsbAddressing)(64);
 
         private static UsbAddressing PROLIFIC_VENDOR_IN_REQTYPE = (UsbAddressing)(192);
 
         private static UsbAddressing PROLIFIC_CTRL_OUT_REQTYPE = (UsbAddressing)(33);
 
-        private const UsbAddressing WRITE_ENDPOINT = (UsbAddressing) 0x02;
-        private const UsbAddressing READ_ENDPOINT = (UsbAddressing) 0x83;
-        private const UsbAddressing INTERRUPT_ENDPOINT = (UsbAddressing) 0x81;
+        private const UsbAddressing WRITE_ENDPOINT = (UsbAddressing)0x02;
+        private const UsbAddressing READ_ENDPOINT = (UsbAddressing)0x83;
+        private const UsbAddressing INTERRUPT_ENDPOINT = (UsbAddressing)0x81;
 
         private static int FLUSH_RX_REQUEST = 0x08;
         private static int FLUSH_TX_REQUEST = 0x09;
@@ -55,7 +57,69 @@ namespace XamarinUsbDriver.UsbSerial
         private static int DEVICE_TYPE_0 = 1;
         private static int DEVICE_TYPE_1 = 2;
 
-        private int mDeviceType = DEVICE_TYPE_HX;
+        /// <summary>
+        /// Types of PL2303 protocols
+        /// </summary>
+        /// <remarks>
+        /// Modeled after Linux driver https://github.com/torvalds/linux/blob/8f4dd16603ce834d1c5c4da67803ea82dd282511/drivers/usb/serial/pl2303.c#L177-L185
+        /// </remarks>
+        private enum PL2303Type
+        {
+            TYPE_H,
+            TYPE_HX,
+            TYPE_TA,
+            TYPE_TB,
+            TYPE_HXD,
+            TYPE_HXN,
+            TYPE_COUNT
+        }
+
+        /// <summary>
+        /// USB_DT_DEVICE: Device descriptor
+        /// </summary>
+        /// <remarks>
+        /// Modeled after Linux USB device descriptor: https://github.com/torvalds/linux/blob/8f4dd16603ce834d1c5c4da67803ea82dd282511/include/uapi/linux/usb/ch9.h#L288-L305
+        /// </remarks>
+        struct UsbDeviceDescriptor
+        {
+            public UsbDeviceDescriptor(byte[] descriptors)
+            {
+                if (descriptors.Length < 18)
+                    throw new ArgumentOutOfRangeException(nameof(descriptors));
+
+                bLength = descriptors[0];
+                bDescriptorType = descriptors[1];
+
+                bcdUSB = (ushort)(descriptors[2] | (descriptors[3] << 8));
+                bDeviceClass = descriptors[4];
+                bDeviceSubClass = descriptors[5];
+                bDeviceProtocol = descriptors[6];
+                bMaxPacketSize0 = descriptors[7];
+                idVendor = (ushort)(descriptors[8] | (descriptors[9] << 8));
+                idProduct = (ushort)(descriptors[10] | (descriptors[11] << 8));
+                bcdDevice = (ushort)(descriptors[12] | (descriptors[13] << 8));
+                iManufacturer = descriptors[14];
+                iProduct = descriptors[15];
+                iSerialNumber = descriptors[16];
+                bNumConfigurations = descriptors[17];
+            }
+
+            public readonly byte bLength;
+            public readonly byte bDescriptorType;
+
+            public readonly ushort bcdUSB;
+            public readonly byte bDeviceClass;
+            public readonly byte bDeviceSubClass;
+            public readonly byte bDeviceProtocol;
+            public readonly byte bMaxPacketSize0;
+            public readonly ushort idVendor;
+            public readonly ushort idProduct;
+            public readonly ushort bcdDevice;
+            public readonly byte iManufacturer;
+            public readonly byte iProduct;
+            public readonly byte iSerialNumber;
+            public readonly byte bNumConfigurations;
+        }
 
         private UsbEndpoint mReadEndpoint;
         private UsbEndpoint mWriteEndpoint;
@@ -64,12 +128,6 @@ namespace XamarinUsbDriver.UsbSerial
         private int mControlLinesValue = 0;
 
         private int mBaudRate = -1, mDataBits = -1, mStopBits = -1, mParity = -1;
-
-        private int mStatus = 0;
-        //private volatile Thread mReadStatusThread = null;
-        //private Object mReadStatusThreadLock = new Object();
-        //bool mStopReadStatusThread = false;
-        //private IOException mReadStatusException = null;
 
         public ProlificSerialPort(UsbDevice device, int portNumber) : base(device, portNumber)
         {
@@ -84,6 +142,8 @@ namespace XamarinUsbDriver.UsbSerial
             }
 
             Connection = connection;
+
+            var type = pl2303_detect_type();
 
             UsbInterface usbInterface = Device.GetInterface(0);
 
@@ -115,26 +175,34 @@ namespace XamarinUsbDriver.UsbSerial
                     }
                 }
 
-                if (Device.DeviceClass == (UsbClass) 0x02)
+                SetControlLines(mControlLinesValue);
+
+                if (type != PL2303Type.TYPE_HXN)
                 {
-                    mDeviceType = DEVICE_TYPE_0;
-                }
-                else
-                {
-                    if ((Device.DeviceClass == 0x00)
-                        || (Device.DeviceClass == (UsbClass) 0xff))
+                    VendorIn(0x8484, 0, 1);
+
+                    VendorOut(0x0404, 0, null);
+
+                    VendorIn(0x8484, 0, 1);
+                    VendorIn(0x8383, 0, 1);
+                    VendorIn(0x8484, 0, 1);
+
+                    VendorOut(0x0404, 1, null);
+
+                    VendorIn(0x8484, 0, 1);
+                    VendorIn(0x8383, 0, 1);
+
+                    VendorOut(0, 1, null);
+                    VendorOut(1, 0, null);
+                    if (type == PL2303Type.TYPE_H)
                     {
-                        mDeviceType = DEVICE_TYPE_1;
+                        VendorOut(2, 0x24, null);
                     }
                     else
                     {
-                        mDeviceType = DEVICE_TYPE_HX;
+                        VendorOut(2, 0x44, null);
                     }
                 }
-
-                SetControlLines(mControlLinesValue);
-
-                DoBlackMagic();
                 ResetDevice();
                 opened = true;
             }
@@ -145,6 +213,82 @@ namespace XamarinUsbDriver.UsbSerial
                     Connection = null;
                     connection.ReleaseInterface(usbInterface);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Detect the type of protocol to use based on the device
+        /// </summary>
+        /// <returns></returns>
+        /// <remarks>
+        /// Based on the Linux driver details: https://github.com/torvalds/linux/blob/8f4dd16603ce834d1c5c4da67803ea82dd282511/drivers/usb/serial/pl2303.c#L401
+        /// </remarks>
+        private PL2303Type pl2303_detect_type()
+        {
+            var desc = new UsbDeviceDescriptor(Connection.GetRawDescriptors());
+
+            /*
+             * Legacy PL2303H, variants 0 and 1 (difference unknown).
+             */
+            if (desc.bDeviceClass == 0x02)
+                return PL2303Type.TYPE_H; /* variant 0 */
+
+            if (desc.bMaxPacketSize0 != 0x40)
+            {
+                if (desc.bDeviceClass == 0x00 || desc.bDeviceClass == 0xff)
+                    return PL2303Type.TYPE_H;  /* variant 1 */
+
+                return PL2303Type.TYPE_H;      /* variant 0 */
+            }
+
+            switch (desc.bcdUSB)
+            {
+                case 0x110:
+                    switch (desc.bcdDevice)
+                    {
+                        case 0x300:
+                            return PL2303Type.TYPE_HX;
+                        case 0x400:
+                            return PL2303Type.TYPE_HXD;
+                        default:
+                            return PL2303Type.TYPE_HX;
+                    }
+                case 0x200:
+                    switch (desc.bcdDevice)
+                    {
+                        case 0x100:
+                        case 0x105:
+                        case 0x305:
+                        case 0x405:
+                        case 0x605:
+                            /*
+                             * Assume it's an HXN-type if the device doesn't
+                             * support the old read request value.
+                             */
+                            if (!pl2303_supports_hx_status())
+                                return PL2303Type.TYPE_HXN;
+                            break;
+                        case 0x300:
+                            return PL2303Type.TYPE_TA;
+                        case 0x500:
+                            return PL2303Type.TYPE_TB;
+                    }
+                    break;
+            }
+
+            throw new InvalidOperationException($"failed to determine type of protocol supported by this device (bDeviceClass {desc.bDeviceClass}, bMaxPacketSize0 {desc.bMaxPacketSize0}, bcdUSB {desc.bcdUSB}, bcdDevice {desc.bcdDevice})");
+        }
+
+        private bool pl2303_supports_hx_status()
+        {
+            try
+            {
+                VendorIn(PL2303_READ_TYPE_HX_STATUS, 0, 1);
+                return true;
+            }
+            catch (IOException)
+            {
+                return false;
             }
         }
 
@@ -237,8 +381,8 @@ namespace XamarinUsbDriver.UsbSerial
 
         public override void SetParameters(int baudRate, DataBits dataBits, StopBits stopBits, Parity parity)
         {
-            if ((mBaudRate == baudRate) && (mDataBits == (int) dataBits)
-                && (mStopBits == (int) stopBits) && (mParity == (int) parity))
+            if ((mBaudRate == baudRate) && (mDataBits == (int)dataBits)
+                && (mStopBits == (int)stopBits) && (mParity == (int)parity))
             {
                 // Make sure no action is performed if there is nothing to change
                 return;
@@ -246,10 +390,10 @@ namespace XamarinUsbDriver.UsbSerial
 
             byte[] lineRequestData = new byte[7];
 
-            lineRequestData[0] = (byte) (baudRate & 0xff);
-            lineRequestData[1] = (byte) ((baudRate >> 8) & 0xff);
-            lineRequestData[2] = (byte) ((baudRate >> 16) & 0xff);
-            lineRequestData[3] = (byte) ((baudRate >> 24) & 0xff);
+            lineRequestData[0] = (byte)(baudRate & 0xff);
+            lineRequestData[1] = (byte)((baudRate >> 8) & 0xff);
+            lineRequestData[2] = (byte)((baudRate >> 16) & 0xff);
+            lineRequestData[3] = (byte)((baudRate >> 24) & 0xff);
 
             switch (stopBits)
             {
@@ -295,16 +439,16 @@ namespace XamarinUsbDriver.UsbSerial
                     throw new IllegalArgumentException("Unknown parity value: " + parity);
             }
 
-            lineRequestData[6] = (byte) dataBits;
+            lineRequestData[6] = (byte)dataBits;
 
             CtrlOut(SET_LINE_REQUEST, 0, 0, lineRequestData);
 
             ResetDevice();
 
             mBaudRate = baudRate;
-            mDataBits = (int) dataBits;
-            mStopBits = (int) stopBits;
-            mParity = (int) parity;
+            mDataBits = (int)dataBits;
+            mStopBits = (int)stopBits;
+            mParity = (int)parity;
         }
 
         private byte[] InControlTransfer(UsbAddressing requestType, int request, int value, int index, int length)
@@ -354,28 +498,6 @@ namespace XamarinUsbDriver.UsbSerial
         {
             OutControlTransfer(PROLIFIC_CTRL_OUT_REQTYPE, request, value, index,
                 data);
-        }
-
-        private void DoBlackMagic()
-        {
-            var buffer = new byte[1];
-
-            VendorIn(33924, 0, 1);
-
-            VendorOut(1028, 0, null);
-
-            VendorIn(33924, 0, 1);
-            VendorIn(33667, 0, 1);
-            VendorIn(33924, 0, 1);
-
-            VendorOut(1028, 1, null);
-
-            VendorIn(33924, 0, 1);
-            VendorIn(33924, 0, 1);
-
-            VendorOut(0, 1, null);
-            VendorOut(1, 0, null);
-            VendorOut(2, 68, null);
         }
 
         private void SetControlLines(int newControlLinesValue)
